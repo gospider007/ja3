@@ -22,7 +22,7 @@ import (
 type ClientHelloId = utls.ClientHelloID
 
 //go:linkname ShuffleExtensions github.com/refraction-networking/utls.shuffleExtensions
-func ShuffleExtensions(chs *ClientHelloSpec) error
+func ShuffleExtensions(chs *Ja3Spec) error
 
 var (
 	// HelloGolang will use default "crypto/tls" handshake marshaling codepath, which WILL
@@ -152,7 +152,7 @@ var ClientHelloIDs = []ClientHelloId{
 	HelloQQ_11_1,
 }
 
-func NewClient(ctx context.Context, conn net.Conn, ja3Spec ClientHelloSpec, disHttp2 bool, utlsConfig *utls.Config) (utlsConn *utls.UConn, err error) {
+func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 bool, utlsConfig *utls.Config) (utlsConn *utls.UConn, err error) {
 	var utlsSpec utls.ClientHelloSpec
 	if !ja3Spec.IsSet() {
 		if ja3Spec, err = CreateSpecWithId(HelloChrome_Auto); err != nil {
@@ -451,9 +451,9 @@ func isGREASEUint16(v uint16) bool {
 	return ((v >> 8) == v&0xff) && v&0xf == 0xa
 }
 
-type ClientHelloSpec utls.ClientHelloSpec
+type Ja3Spec utls.ClientHelloSpec
 
-func (obj ClientHelloSpec) IsSet() bool { //是否设置了
+func (obj Ja3Spec) IsSet() bool { //是否设置了
 	if obj.CipherSuites != nil || obj.Extensions != nil || obj.CompressionMethods != nil ||
 		obj.TLSVersMax != 0 || obj.TLSVersMin != 0 {
 		return true
@@ -491,6 +491,29 @@ func (obj Priority) IsSet() bool {
 	return false
 }
 
+func DefaultJa3Spec() Ja3Spec {
+	spec, _ := CreateSpecWithId(HelloChrome_Auto)
+	return spec
+}
+func DefaultH2Ja3Spec() H2Ja3Spec {
+	var h2Ja3Spec H2Ja3Spec
+	h2Ja3Spec.InitialSetting = []Setting{
+		{Id: 1, Val: 65536},
+		{Id: 2, Val: 0},
+		{Id: 3, Val: 1000},
+		{Id: 4, Val: 6291456},
+		{Id: 6, Val: 262144},
+	}
+	h2Ja3Spec.Priority = Priority{
+		Exclusive: true,
+		StreamDep: 0,
+		Weight:    255,
+	}
+	h2Ja3Spec.OrderHeaders = []string{":method", ":authority", ":scheme", ":path"}
+	h2Ja3Spec.ConnFlow = 15663105
+	return h2Ja3Spec
+}
+
 type H2Ja3Spec struct {
 	InitialSetting []Setting
 	ConnFlow       uint32   //WINDOW_UPDATE:15663105
@@ -498,7 +521,8 @@ type H2Ja3Spec struct {
 	Priority       Priority
 }
 
-func (obj H2Ja3Spec) IsSet() bool { //是否设置了
+// 是否设置了
+func (obj H2Ja3Spec) IsSet() bool {
 	if obj.InitialSetting != nil || obj.ConnFlow != 0 || obj.OrderHeaders != nil || obj.Priority.IsSet() {
 		return true
 	}
@@ -506,12 +530,12 @@ func (obj H2Ja3Spec) IsSet() bool { //是否设置了
 }
 
 // ja3 clientHelloId 生成 clientHello
-func CreateSpecWithId(ja3Id ClientHelloId) (clientHelloSpec ClientHelloSpec, err error) {
+func CreateSpecWithId(ja3Id ClientHelloId) (clientHelloSpec Ja3Spec, err error) {
 	spec, err := utls.UTLSIdToSpec(ja3Id)
 	if err != nil {
 		return clientHelloSpec, err
 	}
-	return ClientHelloSpec(spec), nil
+	return Ja3Spec(spec), nil
 }
 
 // TLSVersion，Ciphers，Extensions，EllipticCurves，EllipticCurvePointFormats
@@ -627,7 +651,7 @@ func createExtensions(extensions []string, tlsExtension, curvesExtension, pointE
 }
 
 // ja3 字符串中生成 clientHello
-func CreateSpecWithStr(ja3Str string) (clientHelloSpec ClientHelloSpec, err error) {
+func CreateSpecWithStr(ja3Str string) (clientHelloSpec Ja3Spec, err error) {
 	tokens := strings.Split(ja3Str, ",")
 	if len(tokens) != 5 {
 		return clientHelloSpec, errors.New("ja3Str 字符串格式不正确")
