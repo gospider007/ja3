@@ -284,15 +284,13 @@ func getExtensionWithId(extensionId uint16) utls.TLSExtension {
 	case 21:
 		return &utls.UtlsPaddingExtension{GetPaddingLen: utls.BoringPaddingStyle}
 	case 23:
-		return &utls.UtlsExtendedMasterSecretExtension{}
+		return &utls.ExtendedMasterSecretExtension{}
 	case 24:
 		return &utls.FakeTokenBindingExtension{}
 	case 27:
 		return &utls.UtlsCompressCertExtension{
 			Algorithms: []utls.CertCompressionAlgo{utls.CertCompressionBrotli},
 		}
-	case 28:
-		return &utls.FakeRecordSizeLimitExtension{} //Limit: 0x4001
 	case 34:
 		return &utls.FakeDelegatedCredentialsExtension{}
 	case 35:
@@ -343,6 +341,8 @@ func getExtensionWithId(extensionId uint16) utls.TLSExtension {
 				{Group: utls.X25519},
 			},
 		}
+	case 57:
+		return &utls.QUICTransportParametersExtension{}
 	case 13172:
 		return &utls.NPNExtension{}
 	case 17513:
@@ -351,7 +351,9 @@ func getExtensionWithId(extensionId uint16) utls.TLSExtension {
 		return &utls.FakeChannelIDExtension{OldExtensionID: true} //FIXME
 	case 30032:
 		return &utls.FakeChannelIDExtension{} //FIXME
-	case 65281:
+	case 0x001c:
+		return &utls.FakeRecordSizeLimitExtension{} //Limit: 0x4001
+	case 0xff01:
 		return &utls.RenegotiationInfoExtension{Renegotiation: utls.RenegotiateOnceAsClient}
 	default:
 		return nil
