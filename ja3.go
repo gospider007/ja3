@@ -208,48 +208,6 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 	return utlsConn, err
 }
 
-func Utls2Tls(preCtx, ctx context.Context, utlsConn *utls.UConn, tlsConfig *tls.Config) (*tls.Conn, error) {
-	//获取cert
-	cert, err := tools.CreateProxyCertWithName("gospider")
-	if err != nil {
-		return nil, err
-	}
-	localConn, remoteConn := Pipe(preCtx)
-	//正常路径发送方
-	tlsConfig.NextProtos = []string{"h2", "http/1.1"}
-	tlsConn := tls.Client(localConn, tlsConfig)
-	proto := utlsConn.ConnectionState().NegotiatedProtocol
-	if proto == "" {
-		proto = "http/1.1"
-	}
-	tlsConfig2 := tlsConfig.Clone()
-	tlsConfig2.Certificates = []tls.Certificate{cert}
-	tlsConfig2.NextProtos = []string{proto}
-	//代理接收方
-	tlsClientConn := tls.Server(remoteConn, tlsConfig2)
-	go func() {
-		defer utlsConn.Close()
-		defer tlsConn.Close()
-		defer tlsClientConn.Close()
-		if err = tlsClientConn.Handshake(); err != nil {
-			return
-		}
-		go func() {
-			defer utlsConn.Close()
-			defer tlsConn.Close()
-			defer tlsClientConn.Close()
-			err = tools.CopyWitchContext(preCtx, utlsConn, tlsClientConn)
-		}()
-		err = tools.CopyWitchContext(preCtx, tlsClientConn, utlsConn)
-	}()
-	if err = tlsConn.HandshakeContext(ctx); err != nil {
-		tlsClientConn.Close()
-		utlsConn.Close()
-		tlsConn.Close()
-	}
-	return tlsConn, err
-}
-
 // https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
 func getExtensionWithId(extensionId uint16) utls.TLSExtension {
 	switch extensionId {
