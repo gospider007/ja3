@@ -9,6 +9,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 
 	"net/http"
 
@@ -18,6 +19,56 @@ import (
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/exp/slices"
 )
+
+func NewOneSessionCache(session *utls.ClientSessionState) *OneSessionCache {
+	return &OneSessionCache{session: session}
+}
+
+type OneSessionCache struct {
+	session    *utls.ClientSessionState
+	newSession *utls.ClientSessionState
+}
+
+func (obj *OneSessionCache) Get(sessionKey string) (*utls.ClientSessionState, bool) {
+	return obj.session, obj.session != nil
+}
+func (obj *OneSessionCache) Put(sessionKey string, cs *utls.ClientSessionState) {
+	if cs != nil {
+		obj.newSession = cs
+	}
+}
+func (obj *OneSessionCache) Session() *utls.ClientSessionState {
+	return obj.newSession
+}
+
+type ClientSessionCache struct {
+	sessionKeyMap map[string]*utls.ClientSessionState
+	newSession    *utls.ClientSessionState
+	lock          sync.RWMutex
+}
+
+func NewClientSessionCache() *ClientSessionCache {
+	return &ClientSessionCache{
+		sessionKeyMap: make(map[string]*utls.ClientSessionState),
+	}
+}
+func (obj *ClientSessionCache) Get(sessionKey string) (session *utls.ClientSessionState, ok bool) {
+	obj.lock.RLock()
+	defer obj.lock.RUnlock()
+	session, ok = obj.sessionKeyMap[sessionKey]
+	return
+}
+
+func (obj *ClientSessionCache) Put(sessionKey string, cs *utls.ClientSessionState) {
+	obj.lock.Lock()
+	defer obj.lock.Unlock()
+	obj.sessionKeyMap[sessionKey] = cs
+	obj.newSession = cs
+}
+
+func (obj *ClientSessionCache) Session() *utls.ClientSessionState {
+	return obj.newSession
+}
 
 type ClientHelloId = utls.ClientHelloID
 
@@ -155,10 +206,7 @@ var ClientHelloIDs = []ClientHelloId{
 func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 bool, utlsConfig *utls.Config) (utlsConn *utls.UConn, err error) {
 	var utlsSpec utls.ClientHelloSpec
 	if !ja3Spec.IsSet() {
-		if ja3Spec, err = CreateSpecWithId(HelloChrome_Auto); err != nil {
-			return nil, err
-		}
-		utlsSpec = utls.ClientHelloSpec(ja3Spec)
+		utlsSpec = utls.ClientHelloSpec(DefaultJa3Spec())
 	} else {
 		utlsSpec = utls.ClientHelloSpec{
 			CipherSuites:       ja3Spec.CipherSuites,
@@ -198,11 +246,6 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 	if err = utlsConn.HandshakeContext(ctx); err != nil {
 		if strings.HasSuffix(err.Error(), "bad record MAC") {
 			err = tools.WrapError(err, "检测到22扩展异常,请删除此扩展后重试")
-		} else if strings.HasSuffix(err.Error(), "unexpected message") {
-			_, ok := utlsSpec.Extensions[len(utlsSpec.Extensions)-1].(*utls.FakePreSharedKeyExtension)
-			if ok {
-				err = tools.WrapError(err, "检测到41扩展异常,请删除此扩展后重试")
-			}
 		}
 	}
 	return utlsConn, err
@@ -254,22 +297,7 @@ func getExtensionWithId(extensionId uint16) utls.TLSExtension {
 	case 35:
 		return &utls.SessionTicketExtension{}
 	case 41:
-		return &utls.FakePreSharedKeyExtension{
-			PskIdentities: []utls.PskIdentity{ // must set identity
-				{
-					Label:               []byte("gospider"), // change this
-					ObfuscatedTicketAge: 0,                  // change this
-				},
-			},
-			PskBinders: [][]byte{ // must set psk binders
-				{
-					0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0,
-				},
-			},
-		}
+		return &utls.UtlsPreSharedKeyExtension{}
 	case 43:
 		return &utls.SupportedVersionsExtension{}
 	case 44:
@@ -368,11 +396,8 @@ func cloneExtension(extension utls.TLSExtension) (utls.TLSExtension, bool) {
 		return &utls.SessionTicketExtension{
 			Session: session,
 		}, true
-	case *utls.FakePreSharedKeyExtension:
-		return &utls.FakePreSharedKeyExtension{
-			PskIdentities: tools.CopySlices(ext.PskIdentities),
-			PskBinders:    tools.CopySlicess(ext.PskBinders),
-		}, true
+	case *utls.UtlsPreSharedKeyExtension:
+		return &utls.UtlsPreSharedKeyExtension{}, true
 	case *utls.CookieExtension:
 		return &utls.CookieExtension{
 			Cookie: tools.CopySlices(ext.Cookie),
@@ -419,6 +444,27 @@ func (obj Ja3Spec) IsSet() bool { //是否设置了
 		return true
 	}
 	return false
+}
+func (obj Ja3Spec) HasPsk() bool { //是否存在psk
+	for _, extension := range obj.Extensions {
+		if _, ok := extension.(*utls.UtlsPreSharedKeyExtension); ok {
+			return ok
+		}
+	}
+	return false
+}
+func AddPsk(obj *Ja3Spec) { //添加psk
+	obj.Extensions = append(obj.Extensions, &utls.UtlsPreSharedKeyExtension{})
+}
+
+func DelPsk(obj *Ja3Spec) { //删除psk
+	extensions := []utls.TLSExtension{}
+	for _, extension := range obj.Extensions {
+		if _, ok := extension.(*utls.UtlsPreSharedKeyExtension); !ok {
+			extensions = append(extensions, extension)
+		}
+	}
+	obj.Extensions = extensions
 }
 
 type Setting struct {
