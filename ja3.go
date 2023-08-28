@@ -389,9 +389,9 @@ func cloneExtension(extension utls.TLSExtension) (utls.TLSExtension, bool) {
 			SupportedSignatureAlgorithms: tools.CopySlices(ext.SupportedSignatureAlgorithms),
 		}, true
 	case *utls.SessionTicketExtension:
-		var session *utls.ClientSessionState
+		var session *utls.SessionState
 		if ext.Session != nil {
-			session = &utls.ClientSessionState{}
+			session = &utls.SessionState{}
 		}
 		return &utls.SessionTicketExtension{
 			Session: session,
