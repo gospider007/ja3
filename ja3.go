@@ -13,8 +13,6 @@ import (
 
 	"net/http"
 
-	_ "unsafe"
-
 	"gitee.com/baixudong/tools"
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/exp/slices"
@@ -72,8 +70,9 @@ func (obj *ClientSessionCache) Session() *utls.ClientSessionState {
 
 type ClientHelloId = utls.ClientHelloID
 
-//go:linkname ShuffleExtensions github.com/refraction-networking/utls.shuffleExtensions
-func ShuffleExtensions(chs *Ja3Spec) error
+func ShuffleExtensions(chs *Ja3Spec) {
+	chs.Extensions = utls.ShuffleChromeTLSExtensions(chs.Extensions)
+}
 
 var (
 	// HelloGolang will use default "crypto/tls" handshake marshaling codepath, which WILL
