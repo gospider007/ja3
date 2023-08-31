@@ -112,9 +112,17 @@ var (
 	HelloChrome_102         = utls.HelloChrome_102
 	HelloChrome_106_Shuffle = utls.HelloChrome_106_Shuffle
 
-	// Chrome with PSK: Chrome start sending this ClientHello after doing TLS 1.3 handshake with the same server.
-	HelloChrome_100_PSK      = utls.HelloChrome_100_PSK
-	HelloChrome_112_PSK_Shuf = utls.HelloChrome_112_PSK_Shuf
+	// Chrome w/ PSK: Chrome start sending this ClientHello after doing TLS 1.3 handshake with the same server.
+	// Beta: PSK extension added. However, uTLS doesn't ship with full PSK support.
+	// Use at your own discretion.
+	HelloChrome_100_PSK              = utls.HelloChrome_100_PSK
+	HelloChrome_112_PSK_Shuf         = utls.HelloChrome_112_PSK_Shuf
+	HelloChrome_114_Padding_PSK_Shuf = utls.HelloChrome_114_Padding_PSK_Shuf
+
+	// Chrome w/ Post-Quantum Key Agreement
+	// Beta: PQ extension added. However, uTLS doesn't ship with full PQ support. Use at your own discretion.
+	HelloChrome_115_PQ     = utls.HelloChrome_115_PQ
+	HelloChrome_115_PQ_PSK = utls.HelloChrome_115_PQ_PSK
 
 	HelloIOS_Auto = utls.HelloIOS_Auto
 	HelloIOS_11_1 = utls.HelloIOS_11_1
@@ -139,91 +147,18 @@ var (
 	HelloQQ_11_1 = utls.HelloQQ_11_1
 )
 
-var ClientHelloIDs = []ClientHelloId{
-	// HelloGolang will use default "crypto/tls" handshake marshaling codepath, which WILL
-	// overwrite your changes to Hello(Config, Session are fine).
-	// You might want to call BuildHandshakeState() before applying any changes.
-	// UConn.Extensions will be completely ignored.
-
-	// HelloCustom will prepare ClientHello with empty uconn.Extensions so you can fill it with
-	// TLSExtensions manually or use ApplyPreset function
-
-	// HelloRandomized* randomly adds/reorders extensions, ciphersuites, etc.
-	HelloRandomized,
-	HelloRandomizedALPN,
-	HelloRandomizedNoALPN,
-
-	// The rest will will parrot given browser.
-	HelloFirefox_Auto,
-	HelloFirefox_55,
-	HelloFirefox_56,
-	HelloFirefox_63,
-	HelloFirefox_65,
-	HelloFirefox_99,
-	HelloFirefox_102,
-	HelloFirefox_105,
-
-	HelloChrome_Auto,
-	HelloChrome_58,
-	HelloChrome_62,
-	HelloChrome_70,
-	HelloChrome_72,
-	HelloChrome_83,
-	HelloChrome_87,
-	HelloChrome_96,
-	HelloChrome_100,
-	HelloChrome_102,
-	HelloChrome_106_Shuffle,
-
-	// Chrome with PSK: Chrome start sending this ClientHello after doing TLS 1.3 handshake with the same server.
-	HelloChrome_100_PSK,
-	HelloChrome_112_PSK_Shuf,
-
-	HelloIOS_Auto,
-	HelloIOS_11_1,
-	HelloIOS_12_1,
-	HelloIOS_13,
-	HelloIOS_14,
-
-	HelloAndroid_11_OkHttp,
-
-	HelloEdge_Auto,
-	HelloEdge_85,
-	HelloEdge_106,
-
-	HelloSafari_Auto,
-	HelloSafari_16_0,
-
-	Hello360_Auto,
-	Hello360_7_5,
-	Hello360_11_0,
-
-	HelloQQ_Auto,
-	HelloQQ_11_1,
-}
-
 func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 bool, utlsConfig *utls.Config) (utlsConn *utls.UConn, err error) {
-	var utlsSpec utls.ClientHelloSpec
-	if !ja3Spec.IsSet() {
-		utlsSpec = utls.ClientHelloSpec(DefaultJa3Spec())
-	} else {
-		utlsSpec = utls.ClientHelloSpec{
-			CipherSuites:       ja3Spec.CipherSuites,
-			CompressionMethods: ja3Spec.CompressionMethods,
-			TLSVersMin:         ja3Spec.TLSVersMin,
-			TLSVersMax:         ja3Spec.TLSVersMax,
-			GetSessionID:       ja3Spec.GetSessionID,
-		}
-		utlsSpec.Extensions = make([]utls.TLSExtension, len(ja3Spec.Extensions))
-		for i := 0; i < len(ja3Spec.Extensions); i++ {
-			ext, ok := cloneExtension(ja3Spec.Extensions[i])
-			if ok {
-				utlsSpec.Extensions[i] = ext
-			} else {
-				utlsSpec.Extensions[i] = ja3Spec.Extensions[i]
-			}
+	utlsSpec := utls.ClientHelloSpec(ja3Spec)
+	utlsSpec.Extensions = make([]utls.TLSExtension, len(ja3Spec.Extensions))
+	for i := 0; i < len(ja3Spec.Extensions); i++ {
+		ext, ok := cloneExtension(ja3Spec.Extensions[i])
+		if ok {
+			utlsSpec.Extensions[i] = ext
+		} else {
+			utlsSpec.Extensions[i] = ja3Spec.Extensions[i]
 		}
 	}
+
 	if disHttp2 {
 		for _, Extension := range utlsSpec.Extensions {
 			alpns, ok := Extension.(*utls.ALPNExtension)
@@ -497,7 +432,7 @@ func (obj Priority) IsSet() bool {
 }
 
 func DefaultJa3Spec() Ja3Spec {
-	spec, _ := CreateSpecWithId(HelloChrome_Auto)
+	spec, _ := CreateSpecWithId(HelloChrome_114_Padding_PSK_Shuf)
 	return spec
 }
 func DefaultH2Ja3Spec() H2Ja3Spec {
@@ -544,10 +479,11 @@ func CreateSpecWithId(ja3Id ClientHelloId) (clientHelloSpec Ja3Spec, err error) 
 }
 
 // TLSVersion，Ciphers，Extensions，EllipticCurves，EllipticCurvePointFormats
-func createTlsVersion(ver uint16, extensions []string) (tlsVersion uint16, tlsSuppor utls.TLSExtension, err error) {
+func createTlsVersion(ver uint16, extensions []string) (tlsMaxVersion uint16, tlsMinVersion uint16, tlsSuppor utls.TLSExtension, err error) {
 	switch ver {
 	case utls.VersionTLS13:
-		tlsVersion = utls.VersionTLS13
+		tlsMaxVersion = utls.VersionTLS13
+		tlsMinVersion = utls.VersionTLS12
 		tlsSuppor = &utls.SupportedVersionsExtension{
 			Versions: []uint16{
 				utls.GREASE_PLACEHOLDER,
@@ -556,7 +492,8 @@ func createTlsVersion(ver uint16, extensions []string) (tlsVersion uint16, tlsSu
 			},
 		}
 	case utls.VersionTLS12:
-		tlsVersion = utls.VersionTLS12
+		tlsMaxVersion = utls.VersionTLS12
+		tlsMinVersion = utls.VersionTLS11
 		tlsSuppor = &utls.SupportedVersionsExtension{
 			Versions: []uint16{
 				utls.GREASE_PLACEHOLDER,
@@ -565,7 +502,8 @@ func createTlsVersion(ver uint16, extensions []string) (tlsVersion uint16, tlsSu
 			},
 		}
 	case utls.VersionTLS11:
-		tlsVersion = utls.VersionTLS11
+		tlsMaxVersion = utls.VersionTLS11
+		tlsMinVersion = utls.VersionTLS10
 		tlsSuppor = &utls.SupportedVersionsExtension{
 			Versions: []uint16{
 				utls.GREASE_PLACEHOLDER,
@@ -669,12 +607,12 @@ func CreateSpecWithStr(ja3Str string) (clientHelloSpec Ja3Spec, err error) {
 	extensions := strings.Split(tokens[2], "-")
 	curves := strings.Split(tokens[3], "-")
 	pointFormats := strings.Split(tokens[4], "-")
-	tlsVersion, tlsExtension, err := createTlsVersion(uint16(ver), extensions)
+	tlsMaxVersion, tlsMinVersion, tlsExtension, err := createTlsVersion(uint16(ver), extensions)
 	if err != nil {
 		return clientHelloSpec, err
 	}
-	clientHelloSpec.TLSVersMin = utls.VersionTLS10
-	clientHelloSpec.TLSVersMax = tlsVersion
+	clientHelloSpec.TLSVersMax = tlsMaxVersion
+	clientHelloSpec.TLSVersMin = tlsMinVersion
 	if clientHelloSpec.CipherSuites, err = createCiphers(ciphers); err != nil {
 		return
 	}
