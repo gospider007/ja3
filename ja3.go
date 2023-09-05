@@ -282,28 +282,43 @@ func getExtensionWithId(extensionId uint16) utls.TLSExtension {
 
 func cloneExtension(extension utls.TLSExtension) (utls.TLSExtension, bool) {
 	switch ext := extension.(type) {
-	case *utls.KeyShareExtension:
-		return &utls.KeyShareExtension{
-			KeyShares: tools.CopySlices(ext.KeyShares),
-		}, true
 	case *utls.SNIExtension:
 		return &utls.SNIExtension{
 			ServerName: ext.ServerName,
 		}, true
-	case *utls.ALPNExtension:
-		return &utls.ALPNExtension{
-			AlpnProtocols: tools.CopySlices(ext.AlpnProtocols),
+	case *utls.StatusRequestExtension:
+		return &utls.StatusRequestExtension{}, true
+	case *utls.SupportedCurvesExtension:
+		return &utls.SupportedCurvesExtension{
+			Curves: tools.CopySlices(ext.Curves),
+		}, true
+	case *utls.SupportedPointsExtension:
+		return &utls.SupportedPointsExtension{
+			SupportedPoints: tools.CopySlices(ext.SupportedPoints),
 		}, true
 	case *utls.SignatureAlgorithmsExtension:
 		return &utls.SignatureAlgorithmsExtension{
 			SupportedSignatureAlgorithms: tools.CopySlices(ext.SupportedSignatureAlgorithms),
 		}, true
+	case *utls.ALPNExtension:
+		return &utls.ALPNExtension{
+			AlpnProtocols: tools.CopySlices(ext.AlpnProtocols),
+		}, true
+	case *utls.StatusRequestV2Extension:
+		return &utls.StatusRequestV2Extension{}, true
+
+	case *utls.SCTExtension:
+		return &utls.SCTExtension{}, true
+
 	case *utls.UtlsPaddingExtension:
 		return &utls.UtlsPaddingExtension{
 			GetPaddingLen: ext.GetPaddingLen,
 			PaddingLen:    ext.PaddingLen,
 			WillPad:       ext.WillPad,
 		}, true
+
+	case *utls.ExtendedMasterSecretExtension:
+		return &utls.ExtendedMasterSecretExtension{}, true
 	case *utls.FakeTokenBindingExtension:
 		return &utls.FakeTokenBindingExtension{
 			MajorVersion:  ext.MajorVersion,
@@ -313,10 +328,6 @@ func cloneExtension(extension utls.TLSExtension) (utls.TLSExtension, bool) {
 	case *utls.UtlsCompressCertExtension:
 		return &utls.UtlsCompressCertExtension{
 			Algorithms: tools.CopySlices(ext.Algorithms),
-		}, true
-	case *utls.FakeRecordSizeLimitExtension:
-		return &utls.FakeRecordSizeLimitExtension{
-			Limit: ext.Limit,
 		}, true
 	case *utls.FakeDelegatedCredentialsExtension:
 		return &utls.FakeDelegatedCredentialsExtension{
@@ -328,10 +339,16 @@ func cloneExtension(extension utls.TLSExtension) (utls.TLSExtension, bool) {
 			session = &utls.SessionState{}
 		}
 		return &utls.SessionTicketExtension{
-			Session: session,
+			Session:     session,
+			Ticket:      tools.CopySlices(ext.Ticket),
+			Initialized: ext.Initialized,
 		}, true
 	case *utls.UtlsPreSharedKeyExtension:
 		return &utls.UtlsPreSharedKeyExtension{}, true
+	case *utls.SupportedVersionsExtension:
+		return &utls.SupportedVersionsExtension{
+			Versions: tools.CopySlices(ext.Versions),
+		}, true
 	case *utls.CookieExtension:
 		return &utls.CookieExtension{
 			Cookie: tools.CopySlices(ext.Cookie),
@@ -344,6 +361,12 @@ func cloneExtension(extension utls.TLSExtension) (utls.TLSExtension, bool) {
 		return &utls.SignatureAlgorithmsCertExtension{
 			SupportedSignatureAlgorithms: tools.CopySlices(ext.SupportedSignatureAlgorithms),
 		}, true
+	case *utls.KeyShareExtension:
+		return &utls.KeyShareExtension{
+			KeyShares: tools.CopySlices(ext.KeyShares),
+		}, true
+	case *utls.QUICTransportParametersExtension:
+		return &utls.QUICTransportParametersExtension{}, true
 	case *utls.NPNExtension:
 		return &utls.NPNExtension{
 			NextProtos: tools.CopySlices(ext.NextProtos),
@@ -355,6 +378,10 @@ func cloneExtension(extension utls.TLSExtension) (utls.TLSExtension, bool) {
 	case *utls.FakeChannelIDExtension:
 		return &utls.FakeChannelIDExtension{
 			OldExtensionID: ext.OldExtensionID,
+		}, true
+	case *utls.FakeRecordSizeLimitExtension:
+		return &utls.FakeRecordSizeLimitExtension{
+			Limit: ext.Limit,
 		}, true
 	case *utls.RenegotiationInfoExtension:
 		return &utls.RenegotiationInfoExtension{
