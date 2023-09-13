@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -178,7 +179,9 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 		return nil, err
 	}
 	if err = utlsConn.HandshakeContext(ctx); err != nil {
-		if strings.HasSuffix(err.Error(), "bad record MAC") {
+		if err == io.EOF {
+			err = nil
+		} else if strings.HasSuffix(err.Error(), "bad record MAC") {
 			err = tools.WrapError(err, "检测到22扩展异常,请删除此扩展后重试")
 		}
 	}

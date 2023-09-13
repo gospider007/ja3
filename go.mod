@@ -3,9 +3,9 @@ module gitee.com/baixudong/ja3
 go 1.21.0
 
 require (
-	gitee.com/baixudong/tools v0.0.0-20230821075140-7422c51fd918
+	gitee.com/baixudong/tools v0.0.0-20230905085451-d080a77e3eb5
 	github.com/refraction-networking/utls v1.5.3
-	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
+	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 )
 
 require (
@@ -23,9 +23,9 @@ require (
 	github.com/tidwall/gjson v1.16.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
-	golang.org/x/crypto v0.12.0 // indirect
+	golang.org/x/crypto v0.13.0 // indirect
 	golang.org/x/image v0.12.0 // indirect
-	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/net v0.15.0 // indirect
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 )
