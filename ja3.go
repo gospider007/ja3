@@ -462,8 +462,58 @@ func isGREASEUint16(v uint16) bool {
 type Ja3Spec utls.ClientHelloSpec
 
 func (obj Ja3Spec) String() string {
-	// Ja3Spec.
-	return ""
+	tlsVersions := []string{}
+	cipherSuites := []string{}
+	for _, cipcipherSuite := range obj.CipherSuites {
+		if cipcipherSuite != utls.GREASE_PLACEHOLDER {
+			cipherSuites = append(cipherSuites, strconv.Itoa(int(cipcipherSuite)))
+		}
+	}
+	extIds := []int{}
+	curves := []string{}
+	points := []string{}
+
+	for _, Extension := range obj.Extensions {
+		extId, extType := getExtensionId(Extension)
+		switch extType {
+		case 0:
+			extIds = append(extIds, int(extId))
+			switch extId {
+			case 43:
+				for _, tlsVersion := range Extension.(*utls.SupportedVersionsExtension).Versions {
+					if tlsVersion != utls.GREASE_PLACEHOLDER {
+						tlsVersions = append(tlsVersions, strconv.Itoa(int(tlsVersion)))
+						break
+					}
+				}
+			case 10:
+				for _, curve := range Extension.(*utls.SupportedCurvesExtension).Curves {
+					if curve != utls.GREASE_PLACEHOLDER {
+						curves = append(curves, strconv.Itoa(int(curve)))
+					}
+				}
+			case 11:
+				for _, point := range Extension.(*utls.SupportedPointsExtension).SupportedPoints {
+					points = append(points, strconv.Itoa(int(point)))
+				}
+			}
+		case 1:
+			extIds = append(extIds, int(Extension.(*utls.GenericExtension).Id))
+		}
+
+	}
+	// slices.Sort(extIds)
+	extIdsr := make([]string, len(extIds))
+	for i, extId := range extIds {
+		extIdsr[i] = strconv.Itoa(extId)
+	}
+	return strings.Join([]string{
+		strings.Join(tlsVersions, "-"),
+		strings.Join(cipherSuites, "-"),
+		strings.Join(extIdsr, "-"),
+		strings.Join(curves, "-"),
+		strings.Join(points, "-"),
+	}, ",")
 }
 func (obj Ja3Spec) IsSet() bool { //是否设置了
 	if obj.CipherSuites != nil || obj.Extensions != nil || obj.CompressionMethods != nil ||
@@ -572,7 +622,7 @@ func CreateSpecWithId(ja3Id ClientHelloId) (clientHelloSpec Ja3Spec, err error) 
 }
 
 // TLSVersion，Ciphers，Extensions，EllipticCurves，EllipticCurvePointFormats
-func createTlsVersion(ver uint16, extensions []string) (tlsMaxVersion uint16, tlsMinVersion uint16, tlsSuppor utls.TLSExtension, err error) {
+func createTlsVersion(ver uint16) (tlsMaxVersion uint16, tlsMinVersion uint16, tlsSuppor utls.TLSExtension, err error) {
 	switch ver {
 	case utls.VersionTLS13:
 		tlsMaxVersion = utls.VersionTLS13
@@ -620,10 +670,7 @@ func createCiphers(ciphers []string) ([]uint16, error) {
 	}
 	return cipherSuites, nil
 }
-func createCurves(curves []string, extensions []string) (curvesExtension utls.TLSExtension, err error) {
-	if !slices.Contains(extensions, "10") {
-		return curvesExtension, errors.New("extensions 缺少ellipticCurves 扩展,检查ja3 字符串是否合法")
-	}
+func createCurves(curves []string) (curvesExtension utls.TLSExtension, err error) {
 	curveIds := []utls.CurveID{utls.GREASE_PLACEHOLDER}
 	for _, val := range curves {
 		if n, err := strconv.ParseUint(val, 10, 16); err != nil {
@@ -634,10 +681,7 @@ func createCurves(curves []string, extensions []string) (curvesExtension utls.TL
 	}
 	return &utls.SupportedCurvesExtension{Curves: curveIds}, nil
 }
-func createPointFormats(points []string, extensions []string) (curvesExtension utls.TLSExtension, err error) {
-	if !slices.Contains(extensions, "11") {
-		return curvesExtension, errors.New("extensions 缺少pointFormats 扩展,检查ja3 字符串是否合法")
-	}
+func createPointFormats(points []string) (curvesExtension utls.TLSExtension, err error) {
 	supportedPoints := []uint8{}
 	for _, val := range points {
 		if n, err := strconv.ParseUint(val, 10, 8); err != nil {
@@ -700,7 +744,7 @@ func CreateSpecWithStr(ja3Str string) (clientHelloSpec Ja3Spec, err error) {
 	extensions := strings.Split(tokens[2], "-")
 	curves := strings.Split(tokens[3], "-")
 	pointFormats := strings.Split(tokens[4], "-")
-	tlsMaxVersion, tlsMinVersion, tlsExtension, err := createTlsVersion(uint16(ver), extensions)
+	tlsMaxVersion, tlsMinVersion, tlsExtension, err := createTlsVersion(uint16(ver))
 	if err != nil {
 		return clientHelloSpec, err
 	}
@@ -709,11 +753,11 @@ func CreateSpecWithStr(ja3Str string) (clientHelloSpec Ja3Spec, err error) {
 	if clientHelloSpec.CipherSuites, err = createCiphers(ciphers); err != nil {
 		return
 	}
-	curvesExtension, err := createCurves(curves, extensions)
+	curvesExtension, err := createCurves(curves)
 	if err != nil {
 		return clientHelloSpec, err
 	}
-	pointExtension, err := createPointFormats(pointFormats, extensions)
+	pointExtension, err := createPointFormats(pointFormats)
 	if err != nil {
 		return clientHelloSpec, err
 	}
