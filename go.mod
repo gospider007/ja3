@@ -4,8 +4,8 @@ go 1.21.0
 
 require (
 	gitee.com/baixudong/tools v0.0.0-20230926010219-77f29cbf5935
-	github.com/refraction-networking/utls v1.5.3
-	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
+	github.com/refraction-networking/utls v1.5.4
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 )
 
 require (
@@ -20,9 +20,9 @@ require (
 	github.com/onsi/ginkgo/v2 v2.12.1 // indirect
 	github.com/onsi/gomega v1.27.10 // indirect
 	github.com/quic-go/quic-go v0.39.0 // indirect
-	golang.org/x/crypto v0.13.0 // indirect
-	golang.org/x/image v0.12.0 // indirect
-	golang.org/x/net v0.15.0 // indirect
-	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/image v0.13.0 // indirect
+	golang.org/x/net v0.16.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 )

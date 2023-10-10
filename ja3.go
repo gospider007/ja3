@@ -10,7 +10,6 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 
 	"net/http"
 
@@ -18,56 +17,6 @@ import (
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/exp/slices"
 )
-
-func NewOneSessionCache(session *utls.ClientSessionState) *OneSessionCache {
-	return &OneSessionCache{session: session}
-}
-
-type OneSessionCache struct {
-	session    *utls.ClientSessionState
-	newSession *utls.ClientSessionState
-}
-
-func (obj *OneSessionCache) Get(sessionKey string) (*utls.ClientSessionState, bool) {
-	return obj.session, obj.session != nil
-}
-func (obj *OneSessionCache) Put(sessionKey string, cs *utls.ClientSessionState) {
-	if cs != nil {
-		obj.newSession = cs
-	}
-}
-func (obj *OneSessionCache) Session() *utls.ClientSessionState {
-	return obj.newSession
-}
-
-type ClientSessionCache struct {
-	sessionKeyMap map[string]*utls.ClientSessionState
-	newSession    *utls.ClientSessionState
-	lock          sync.RWMutex
-}
-
-func NewClientSessionCache() *ClientSessionCache {
-	return &ClientSessionCache{
-		sessionKeyMap: make(map[string]*utls.ClientSessionState),
-	}
-}
-func (obj *ClientSessionCache) Get(sessionKey string) (session *utls.ClientSessionState, ok bool) {
-	obj.lock.RLock()
-	defer obj.lock.RUnlock()
-	session, ok = obj.sessionKeyMap[sessionKey]
-	return
-}
-
-func (obj *ClientSessionCache) Put(sessionKey string, cs *utls.ClientSessionState) {
-	obj.lock.Lock()
-	defer obj.lock.Unlock()
-	obj.sessionKeyMap[sessionKey] = cs
-	obj.newSession = cs
-}
-
-func (obj *ClientSessionCache) Session() *utls.ClientSessionState {
-	return obj.newSession
-}
 
 type ClientHelloId = utls.ClientHelloID
 
