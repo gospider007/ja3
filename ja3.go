@@ -104,7 +104,7 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 		extId, extType := getExtensionId(ja3Spec.Extensions[i])
 		switch extType {
 		case 3:
-			return nil, fmt.Errorf("未知的扩展：%T", ja3Spec.Extensions[i])
+			return nil, fmt.Errorf("unknow extentsion：%T", ja3Spec.Extensions[i])
 		case 0:
 			if ext, _ := createExtension(extId, extensionOption{ext: ja3Spec.Extensions[i]}); ext != nil {
 				utlsSpec.Extensions[i] = ext
@@ -137,7 +137,7 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 		if err == io.EOF {
 			err = nil
 		} else if strings.HasSuffix(err.Error(), "bad record MAC") {
-			err = fmt.Errorf("%w,%s", err, "检测到22扩展异常,请删除此扩展后重试")
+			err = fmt.Errorf("%w,%s", err, "this 22 extension is error")
 		}
 	}
 	return utlsConn, err
@@ -484,7 +484,7 @@ func createExtension(extensionId uint16, options ...extensionOption) (utls.TLSEx
 	}
 }
 
-// type,0:是一个扩展，1：自定义扩展，2：无用扩展，3：未知扩展
+// type,0: is ext, 1：custom ext，2：grease ext , 3：unknow ext
 func getExtensionId(extension utls.TLSExtension) (uint16, uint8) {
 	switch ext := extension.(type) {
 	case *utls.SNIExtension:
@@ -613,33 +613,14 @@ func (obj Ja3Spec) String() string {
 		strings.Join(points, "-"),
 	}, ",")
 }
-func (obj Ja3Spec) IsSet() bool { //是否设置了
+
+// have value
+func (obj Ja3Spec) IsSet() bool {
 	if obj.CipherSuites != nil || obj.Extensions != nil || obj.CompressionMethods != nil ||
 		obj.TLSVersMax != 0 || obj.TLSVersMin != 0 {
 		return true
 	}
 	return false
-}
-func (obj Ja3Spec) HasPsk() bool { //是否存在psk
-	for _, extension := range obj.Extensions {
-		if _, ok := extension.(*utls.UtlsPreSharedKeyExtension); ok {
-			return ok
-		}
-	}
-	return false
-}
-func AddPsk(obj *Ja3Spec) { //添加psk
-	obj.Extensions = append(obj.Extensions, &utls.UtlsPreSharedKeyExtension{})
-}
-
-func DelPsk(obj *Ja3Spec) { //删除psk
-	extensions := []utls.TLSExtension{}
-	for _, extension := range obj.Extensions {
-		if _, ok := extension.(*utls.UtlsPreSharedKeyExtension); !ok {
-			extensions = append(extensions, extension)
-		}
-	}
-	obj.Extensions = extensions
 }
 
 type Setting struct {
@@ -665,6 +646,7 @@ type Priority struct {
 	Weight uint8
 }
 
+// have value
 func (obj Priority) IsSet() bool {
 	if obj.StreamDep != 0 || obj.Exclusive || obj.Weight != 0 {
 		return true
@@ -698,11 +680,11 @@ func DefaultH2Ja3Spec() H2Ja3Spec {
 type H2Ja3Spec struct {
 	InitialSetting []Setting
 	ConnFlow       uint32   //WINDOW_UPDATE:15663105
-	OrderHeaders   []string //伪标头顺序,例如：[]string{":method",":authority",":scheme",":path"}
+	OrderHeaders   []string //example：[]string{":method",":authority",":scheme",":path"}
 	Priority       Priority
 }
 
-// 是否设置了
+// have value
 func (obj H2Ja3Spec) IsSet() bool {
 	if obj.InitialSetting != nil || obj.ConnFlow != 0 || obj.OrderHeaders != nil || obj.Priority.IsSet() {
 		return true
@@ -736,7 +718,6 @@ func (obj H2Ja3Spec) Fp() string {
 	}, "|")
 }
 
-// ja3 clientHelloId 生成 clientHello
 func CreateSpecWithId(ja3Id ClientHelloId) (clientHelloSpec Ja3Spec, err error) {
 	spec, err := utls.UTLSIdToSpec(ja3Id)
 	if err != nil {
@@ -779,7 +760,7 @@ func createTlsVersion(ver uint16) (tlsMaxVersion uint16, tlsMinVersion uint16, t
 			},
 		}
 	default:
-		err = errors.New("ja3Str 字符串中tls 版本错误")
+		err = errors.New("ja3Str tls version error")
 	}
 	return
 }
@@ -787,7 +768,7 @@ func createCiphers(ciphers []string) ([]uint16, error) {
 	cipherSuites := []uint16{utls.GREASE_PLACEHOLDER}
 	for _, val := range ciphers {
 		if n, err := strconv.ParseUint(val, 10, 16); err != nil {
-			return nil, errors.New("ja3Str 字符串中cipherSuites错误")
+			return nil, errors.New("ja3Str cipherSuites error")
 		} else {
 			cipherSuites = append(cipherSuites, uint16(n))
 		}
@@ -798,7 +779,7 @@ func createCurves(curves []string) (curvesExtension utls.TLSExtension, err error
 	curveIds := []utls.CurveID{utls.GREASE_PLACEHOLDER}
 	for _, val := range curves {
 		if n, err := strconv.ParseUint(val, 10, 16); err != nil {
-			return nil, errors.New("ja3Str 字符串中cipherSuites错误")
+			return nil, errors.New("ja3Str curves error")
 		} else {
 			curveIds = append(curveIds, utls.CurveID(uint16(n)))
 		}
@@ -809,7 +790,7 @@ func createPointFormats(points []string) (curvesExtension utls.TLSExtension, err
 	supportedPoints := []uint8{}
 	for _, val := range points {
 		if n, err := strconv.ParseUint(val, 10, 8); err != nil {
-			return nil, errors.New("ja3Str 字符串中cipherSuites错误")
+			return nil, errors.New("ja3Str point error")
 		} else {
 			supportedPoints = append(supportedPoints, uint8(n))
 		}
@@ -822,7 +803,7 @@ func createExtensions(extensions []string, tlsExtension, curvesExtension, pointE
 	for _, extension := range extensions {
 		var extensionId uint16
 		if n, err := strconv.ParseUint(extension, 10, 16); err != nil {
-			return nil, errors.New("ja3Str 字符串中extension错误,utls不支持的扩展: " + extension)
+			return nil, errors.New("ja3Str extension error,utls not support: " + extension)
 		} else {
 			extensionId = uint16(n)
 		}
@@ -842,7 +823,7 @@ func createExtensions(extensions []string, tlsExtension, curvesExtension, pointE
 				allExtensions = append(allExtensions, &utls.GenericExtension{Id: extensionId})
 			} else {
 				if ext == nil {
-					return nil, errors.New("ja3Str 字符串中extension错误,utls不支持的扩展: " + extension)
+					return nil, errors.New("ja3Str extension error,utls not support: " + extension)
 				}
 				if extensionId == 21 {
 					allExtensions = append(allExtensions, &utls.UtlsGREASEExtension{})
@@ -858,11 +839,11 @@ func createExtensions(extensions []string, tlsExtension, curvesExtension, pointE
 func CreateSpecWithStr(ja3Str string) (clientHelloSpec Ja3Spec, err error) {
 	tokens := strings.Split(ja3Str, ",")
 	if len(tokens) != 5 {
-		return clientHelloSpec, errors.New("ja3Str 字符串格式不正确")
+		return clientHelloSpec, errors.New("ja3Str format error")
 	}
 	ver, err := strconv.ParseUint(tokens[0], 10, 16)
 	if err != nil {
-		return clientHelloSpec, errors.New("ja3Str 字符串中tls 版本错误")
+		return clientHelloSpec, errors.New("ja3Str tlsVersion error")
 	}
 	ciphers := strings.Split(tokens[1], "-")
 	extensions := strings.Split(tokens[2], "-")
