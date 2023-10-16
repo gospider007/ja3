@@ -885,8 +885,8 @@ func GetFpContextData(ctx context.Context) (*FpContextData, bool) {
 
 type ClientHelloInfo struct {
 	ContentType        uint8             //contentType
-	TlsMinVersion      uint16            //TlsMinVersion
-	TlsMaxVersion      uint16            //TlsMaxVersion
+	MessageVersion     uint16            //MessageVersion
+	HandshakeVersion   uint16            //HandshakeVersion
 	HandShakeType      uint8             //HandShakeType
 	RandomTime         uint32            //RandomTime
 	RandomBytes        []byte            //RandomBytes
@@ -1054,7 +1054,7 @@ func decodeClientHello(clienthello []byte) (clientHelloInfo ClientHelloInfo, err
 		err = errors.New("contentType error")
 		return
 	}
-	if !plaintext.ReadUint16(&clientHelloInfo.TlsMinVersion) {
+	if !plaintext.ReadUint16(&clientHelloInfo.MessageVersion) {
 		err = errors.New("tlsMinVersion error")
 		return
 	}
@@ -1074,7 +1074,7 @@ func decodeClientHello(clienthello []byte) (clientHelloInfo ClientHelloInfo, err
 		err = errors.New("handShakeData error")
 		return
 	}
-	if !handShakeData.ReadUint16(&clientHelloInfo.TlsMaxVersion) {
+	if !handShakeData.ReadUint16(&clientHelloInfo.HandshakeVersion) {
 		err = errors.New("tlsMaxVersion error")
 		return
 	}
