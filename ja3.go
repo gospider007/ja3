@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -133,18 +132,10 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 	if err = utlsConn.ApplyPreset(&utlsSpec); err != nil {
 		return nil, err
 	}
-	if err = utlsConn.HandshakeContext(ctx); err != nil {
-		if err == io.EOF {
-			err = nil
-		} else if strings.HasSuffix(err.Error(), "bad record MAC") {
-			err = fmt.Errorf("%w,%s", err, "this 22 extension is error")
-		}
-	}
-	return utlsConn, err
+	return utlsConn, utlsConn.HandshakeContext(ctx)
 }
 
 // https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
-
 type extensionOption struct {
 	data []byte
 	ext  utls.TLSExtension
