@@ -863,6 +863,52 @@ func CreateSpecWithStr(ja3Str string) (clientHelloSpec Ja3Spec, err error) {
 	return
 }
 
+func CreateH2SpecWithStr(h2ja3SpecStr string) (h2ja3Spec H2Ja3Spec, err error) {
+	tokens := strings.Split(h2ja3SpecStr, "|")
+	if len(tokens) != 4 {
+		err = errors.New("h2 spec format error")
+		return
+	}
+	h2ja3Spec.InitialSetting = []Setting{}
+	for _, setting := range strings.Split(tokens[0], ",") {
+		tts := strings.Split(setting, ":")
+		if len(tts) != 2 {
+			err = errors.New("h2 setting error")
+			return
+		}
+		var ttKey, ttVal int
+		if ttKey, err = strconv.Atoi(tts[0]); err != nil {
+			return
+		}
+		if ttVal, err = strconv.Atoi(tts[1]); err != nil {
+			return
+		}
+		h2ja3Spec.InitialSetting = append(h2ja3Spec.InitialSetting, Setting{
+			Id:  uint16(ttKey),
+			Val: uint32(ttVal),
+		})
+	}
+	var connFlow int
+	if connFlow, err = strconv.Atoi(tokens[1]); err != nil {
+		return
+	}
+	h2ja3Spec.ConnFlow = uint32(connFlow)
+	h2ja3Spec.OrderHeaders = []string{}
+	for _, hkey := range strings.Split(tokens[3], ",") {
+		switch hkey {
+		case "m":
+			h2ja3Spec.OrderHeaders = append(h2ja3Spec.OrderHeaders, ":method")
+		case "a":
+			h2ja3Spec.OrderHeaders = append(h2ja3Spec.OrderHeaders, ":authority")
+		case "s":
+			h2ja3Spec.OrderHeaders = append(h2ja3Spec.OrderHeaders, ":scheme")
+		case "p":
+			h2ja3Spec.OrderHeaders = append(h2ja3Spec.OrderHeaders, ":path")
+		}
+	}
+	return
+}
+
 type FpContextData struct {
 	clientHelloInfo tls.ClientHelloInfo
 	clientHelloData []byte
