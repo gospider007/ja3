@@ -1161,7 +1161,6 @@ func decodeClientHello(clienthello []byte) (clientHelloInfo ClientHelloInfo, err
 	}
 	return
 }
-
 func (obj *FpContextData) ClientHelloInfo() tls.ClientHelloInfo {
 	return obj.clientHelloInfo
 }
@@ -1196,7 +1195,8 @@ type keyPrincipal string
 const keyPrincipalID keyPrincipal = "FpContextData"
 
 func ConnContext(ctx context.Context, c net.Conn) context.Context {
-	return context.WithValue(ctx, keyPrincipalID, &FpContextData{})
+	ja3Ctx, _ := CreateContext(ctx)
+	return ja3Ctx
 }
 func CreateContext(ctx context.Context) (ja3Ctx context.Context, ja3Context *FpContextData) {
 	ja3Context = &FpContextData{}
