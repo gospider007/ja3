@@ -26,6 +26,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.12.1 // indirect
 	github.com/onsi/gomega v1.27.10 // indirect
 	github.com/quic-go/quic-go v0.39.1 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
