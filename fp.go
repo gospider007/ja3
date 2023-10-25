@@ -6,11 +6,13 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/gospider007/gtls"
+	"github.com/gospider007/re"
 	"github.com/gospider007/tools"
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/crypto/cryptobyte"
@@ -316,6 +318,48 @@ func (obj *FpContextData) Ja4() string {
 	ja4cStr := tools.Hex(sha256.Sum256([]byte(tools.AnyJoin(exts, "") + tools.AnyJoin(clientHelloParseData.Algorithms, ""))))[:12]
 	ja4 := tools.AnyJoin([]string{ja4aStr, ja4bStr, ja4cStr}, "_")
 	return ja4
+}
+func (obj *FpContextData) Ja4H(req *http.Request) string {
+	ja4HaStr := "ge" + fmt.Sprintf("%d%d", req.ProtoMajor, req.ProtoMinor)
+	headNum := len(req.Header)
+	if req.Header.Get("Cookie") == "" {
+		headNum--
+		ja4HaStr += "n"
+	} else {
+		ja4HaStr += "c"
+	}
+	if req.Header.Get("Referer") == "" {
+		headNum--
+		ja4HaStr += "n"
+	} else {
+		ja4HaStr += "r"
+	}
+	ja4HaStr += fmt.Sprintf("%d", headNum)
+	lang := strings.ToLower(re.Sub(`[\s-,;\.=]`, "", req.Header.Get("Accept-Language")))
+	if len(lang) < 4 {
+		ja4HaStr += lang
+		for i := 0; i < 4-len(lang); i++ {
+			ja4HaStr += "0"
+		}
+	} else {
+		ja4HaStr += lang[:4]
+	}
+	var ja4HbStr string
+	if obj.orderHeaders != nil {
+		ja4HbStr = tools.Hex(sha256.Sum256([]byte(strings.Join(obj.orderHeaders, ","))))[:12]
+	} else {
+		ja4HbStr = tools.Hex(sha256.Sum256([]byte(strings.Join(obj.H2Ja3Spec().OrderHeaders, ","))))[:12]
+	}
+	keys := []string{}
+	vals := []string{}
+	for _, cookie := range req.Cookies() {
+		keys = append(keys, cookie.Name)
+		vals = append(vals, fmt.Sprintf("%s=%s", cookie.Name, cookie.Value))
+	}
+	ja4HcStr := tools.Hex(sha256.Sum256([]byte(strings.Join(keys, ","))))[:12]
+	ja4HdStr := tools.Hex(sha256.Sum256([]byte(strings.Join(vals, ","))))[:12]
+	ja4H := tools.AnyJoin([]string{ja4HaStr, ja4HbStr, ja4HcStr, ja4HdStr}, "_")
+	return ja4H
 }
 func (obj *FpContextData) ConnectionState() tls.ConnectionState {
 	return obj.connectionState

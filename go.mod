@@ -4,6 +4,7 @@ go 1.21.3
 
 require (
 	github.com/gospider007/gtls v0.0.0-20231023095101-01d7aaf6daf5
+	github.com/gospider007/re v0.0.0-20231015023348-717c984874af
 	github.com/gospider007/tools v0.0.0-20231015122431-2acd695704d6
 	github.com/refraction-networking/utls v1.5.4
 	golang.org/x/crypto v0.14.0
@@ -17,7 +18,6 @@ require (
 	github.com/gaukas/godicttls v0.0.4 // indirect
 	github.com/google/pprof v0.0.0-20230926050212-f7f687d19a98 // indirect
 	github.com/gospider007/kinds v0.0.0-20231015025159-69ab7d8d9b94 // indirect
-	github.com/gospider007/re v0.0.0-20231015023348-717c984874af // indirect
 	github.com/klauspost/compress v1.17.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/libdns/libdns v0.2.1 // indirect
