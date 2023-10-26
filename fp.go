@@ -348,7 +348,11 @@ func (obj *FpContextData) Ja4H(req *http.Request) string {
 	} else {
 		ja4HaStr += "r"
 	}
-	ja4HaStr += fmt.Sprintf("%d", headNum)
+	headNumStr := fmt.Sprintf("%d", headNum)
+	if len(headNumStr) < 2 {
+		headNumStr = "0" + headNumStr
+	}
+	ja4HaStr += headNumStr
 	lang := strings.ToLower(re.Sub(`[\s-,;\.=]`, "", req.Header.Get("Accept-Language")))
 	if len(lang) < 4 {
 		ja4HaStr += lang
@@ -359,17 +363,29 @@ func (obj *FpContextData) Ja4H(req *http.Request) string {
 		ja4HaStr += lang[:4]
 	}
 	var ja4HbStr string
+	orderHeaders := []string{}
 	if obj.orderHeaders != nil {
-		ja4HbStr = tools.Hex(sha256.Sum256([]byte(strings.Join(obj.orderHeaders, ","))))[:12]
-	} else {
-		ja4HbStr = tools.Hex(sha256.Sum256([]byte(strings.Join(obj.H2Ja3Spec().OrderHeaders, ","))))[:12]
+		for _, cook := range obj.orderHeaders {
+			if cook != "Cookie" && cook != "Referer" {
+				orderHeaders = append(orderHeaders, cook)
+			}
+		}
+	} else if obj.H2Ja3Spec().OrderHeaders != nil {
+		for _, cook := range obj.H2Ja3Spec().OrderHeaders {
+			if cook != "Cookie" && cook != "Referer" {
+				orderHeaders = append(orderHeaders, cook)
+			}
+		}
 	}
+	ja4HbStr = tools.Hex(sha256.Sum256([]byte(strings.Join(orderHeaders, ","))))[:12]
 	keys := []string{}
 	vals := []string{}
 	for _, cookie := range req.Cookies() {
 		keys = append(keys, cookie.Name)
 		vals = append(vals, fmt.Sprintf("%s=%s", cookie.Name, cookie.Value))
 	}
+	sort.Strings(keys)
+	sort.Strings(vals)
 	ja4HcStr := tools.Hex(sha256.Sum256([]byte(strings.Join(keys, ","))))[:12]
 	ja4HdStr := tools.Hex(sha256.Sum256([]byte(strings.Join(vals, ","))))[:12]
 	ja4H := tools.AnyJoin([]string{ja4HaStr, ja4HbStr, ja4HcStr, ja4HdStr}, "_")
