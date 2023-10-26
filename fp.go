@@ -57,6 +57,7 @@ func (obj ClientHello) UtlsExtensions() map[uint16]utls.TLSExtension {
 }
 
 type TlsData struct {
+	connectionState    tls.ConnectionState
 	Ciphers            []uint16
 	Curves             []uint16
 	Extensions         []uint16
@@ -70,12 +71,12 @@ type TlsData struct {
 	CompressionMethods string
 }
 
-func (obj TlsData) Fp() (string, string) {
-	tlsVersion := fmt.Sprint(clearGreas(obj.Versions)[0])
-	ciphers := clearGreas(obj.Ciphers)
-	extensions := clearGreas(obj.Extensions)
-	curves := clearGreas(obj.Curves)
-	points := clearGreas(obj.Points)
+func (tlsData TlsData) Fp() (string, string) {
+	tlsVersion := fmt.Sprintf("%d", tlsData.connectionState.Version)
+	ciphers := clearGreas(tlsData.Ciphers)
+	extensions := clearGreas(tlsData.Extensions)
+	curves := clearGreas(tlsData.Curves)
+	points := clearGreas(tlsData.Points)
 	ja3Str := strings.Join([]string{
 		tlsVersion,
 		tools.AnyJoin(ciphers, "-"),
@@ -103,24 +104,29 @@ func clearGreas(values []uint16) []uint16 {
 	return results
 }
 
-func (obj ClientHello) TlsData() (tlsData TlsData) {
-	tlsData.Ciphers = obj.CipherSuites
-	tlsData.Curves = obj.Curves()
+func (obj FpContextData) TlsData() (tlsData TlsData, err error) {
+	clientHello, err := obj.ClientHello()
+	if err != nil {
+		return tlsData, err
+	}
+	tlsData.connectionState = obj.connectionState
+	tlsData.Ciphers = clientHello.CipherSuites
+	tlsData.Curves = clientHello.Curves()
 	tlsData.Extensions = []uint16{}
-	for _, extension := range obj.Extensions {
+	for _, extension := range clientHello.Extensions {
 		tlsData.Extensions = append(tlsData.Extensions, extension.Type)
 	}
 	tlsData.Points = []uint16{}
-	for _, point := range obj.Points() {
+	for _, point := range clientHello.Points() {
 		tlsData.Points = append(tlsData.Points, uint16(point))
 	}
-	tlsData.Protocols = obj.Protocols()
-	tlsData.Versions = obj.Versions()
-	tlsData.Algorithms = obj.Algorithms()
-	tlsData.RandomTime = time.Unix(int64(obj.RandomTime), 0).String()
-	tlsData.RandomBytes = tools.Hex(obj.RandomBytes)
-	tlsData.SessionId = tools.Hex(obj.SessionId)
-	tlsData.CompressionMethods = tools.Hex(obj.CompressionMethods)
+	tlsData.Protocols = clientHello.Protocols()
+	tlsData.Versions = clientHello.Versions()
+	tlsData.Algorithms = clientHello.Algorithms()
+	tlsData.RandomTime = time.Unix(int64(clientHello.RandomTime), 0).String()
+	tlsData.RandomBytes = tools.Hex(clientHello.RandomBytes)
+	tlsData.SessionId = tools.Hex(clientHello.SessionId)
+	tlsData.CompressionMethods = tools.Hex(clientHello.CompressionMethods)
 	return
 }
 
@@ -268,14 +274,9 @@ func decodeClientHello(clienthello []byte) (clientHelloInfo ClientHello, err err
 	}
 	return
 }
-func (obj *FpContextData) Ja4() string {
-	rawClientHello, err := obj.ClientHello()
-	if err != nil {
-		return ""
-	}
-	clientHelloParseData := rawClientHello.TlsData()
+func (clientHelloParseData TlsData) Ja4() string {
 	ja4aStr := "t"
-	switch obj.connectionState.Version {
+	switch clientHelloParseData.connectionState.Version {
 	case tls.VersionTLS10:
 		ja4aStr += "10"
 	case tls.VersionTLS11:
@@ -287,35 +288,48 @@ func (obj *FpContextData) Ja4() string {
 	default:
 		ja4aStr += "00"
 	}
-	if obj.connectionState.ServerName == "" {
+	if clientHelloParseData.connectionState.ServerName == "" {
 		ja4aStr += "i"
-	} else if _, addTyp := gtls.ParseHost(obj.connectionState.ServerName); addTyp != 0 {
+	} else if _, addTyp := gtls.ParseHost(clientHelloParseData.connectionState.ServerName); addTyp != 0 {
 		ja4aStr += "i"
 	} else {
 		ja4aStr += "d"
 	}
 	ciphers := clearGreas(clientHelloParseData.Ciphers)
-	ja4aStr += fmt.Sprint(len(ciphers))
-	exts := clearGreas(clientHelloParseData.Extensions)
-	ja4aStr += fmt.Sprint(len(exts))
-	switch len(obj.connectionState.NegotiatedProtocol) {
+	ciphersNum := fmt.Sprint(len(ciphers))
+	if len(ciphersNum) < 2 {
+		ciphersNum = "0" + ciphersNum
+	}
+	ja4aStr += ciphersNum
+	extsNum := fmt.Sprint(len(clearGreas(clientHelloParseData.Extensions)))
+	if len(extsNum) < 2 {
+		extsNum = "0" + extsNum
+	}
+	ja4aStr += extsNum
+	switch len(clientHelloParseData.connectionState.NegotiatedProtocol) {
 	case 0:
 		ja4aStr += "00"
 	case 1:
-		ja4aStr += obj.connectionState.NegotiatedProtocol + "0"
+		ja4aStr += clientHelloParseData.connectionState.NegotiatedProtocol + "0"
 	case 2:
-		ja4aStr += obj.connectionState.NegotiatedProtocol
+		ja4aStr += clientHelloParseData.connectionState.NegotiatedProtocol
 	default:
-		if obj.connectionState.NegotiatedProtocol == "http/1.1" {
+		if clientHelloParseData.connectionState.NegotiatedProtocol == "http/1.1" {
 			ja4aStr += "h1"
 		} else {
-			ja4aStr += obj.connectionState.NegotiatedProtocol[:2]
+			ja4aStr += clientHelloParseData.connectionState.NegotiatedProtocol[:2]
 		}
 	}
 	sort.Slice(ciphers, func(i, j int) bool { return ciphers[i] < ciphers[j] })
+	ja4bStr := tools.Hex(sha256.Sum256([]byte(tools.AnyJoin(ciphers, ","))))[:12]
+	exts := []uint16{}
+	for _, ext := range clearGreas(clientHelloParseData.Extensions) {
+		if ext != 0 && ext != 10 {
+			exts = append(exts, ext)
+		}
+	}
 	sort.Slice(exts, func(i, j int) bool { return exts[i] < exts[j] })
-	ja4bStr := tools.Hex(sha256.Sum256([]byte(tools.AnyJoin(ciphers, ""))))[:12]
-	ja4cStr := tools.Hex(sha256.Sum256([]byte(tools.AnyJoin(exts, "") + tools.AnyJoin(clientHelloParseData.Algorithms, ""))))[:12]
+	ja4cStr := tools.Hex(sha256.Sum256([]byte(tools.AnyJoin(exts, ",") + "," + tools.AnyJoin(clientHelloParseData.Algorithms, ","))))[:12]
 	ja4 := tools.AnyJoin([]string{ja4aStr, ja4bStr, ja4cStr}, "_")
 	return ja4
 }
