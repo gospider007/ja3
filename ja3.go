@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/textproto"
 	"strconv"
 	"strings"
 
@@ -645,6 +646,49 @@ func DefaultJa3Spec() Ja3Spec {
 	spec, _ := CreateSpecWithId(HelloChrome_114_Padding_PSK_Shuf)
 	return spec
 }
+
+var defaultOrderHeaders = []string{
+	":method",
+	":authority",
+	":scheme",
+	":path",
+	"Host",
+	"Connection",
+	"Content-Length",
+	"pragma",
+	"cache-control",
+	"sec-ch-ua",
+	"sec-ch-ua-mobile",
+	"sec-ch-ua-platform",
+	"upgrade-insecure-requests",
+	"accept",
+	"user-agent",
+	"origin",
+	"Referer",
+	"sec-fetch-site",
+	"sec-fetch-mode",
+	"sec-fetch-user",
+	"sec-fetch-dest",
+	"accept-encoding",
+	"accept-language",
+	"Cookie",
+}
+
+func DefaultH2OrderHeaders() []string {
+	headers := make([]string, len(defaultOrderHeaders))
+	for i, key := range defaultOrderHeaders {
+		headers[i] = strings.ToLower(key)
+	}
+	return headers
+}
+func DefaultH1OrderHeaders() []string {
+	headers := make([]string, len(defaultOrderHeaders))
+	for i, key := range defaultOrderHeaders {
+		headers[i] = textproto.CanonicalMIMEHeaderKey(key)
+	}
+	return headers
+}
+
 func DefaultH2Ja3Spec() H2Ja3Spec {
 	var h2Ja3Spec H2Ja3Spec
 	h2Ja3Spec.InitialSetting = []Setting{
@@ -659,7 +703,7 @@ func DefaultH2Ja3Spec() H2Ja3Spec {
 		StreamDep: 0,
 		Weight:    255,
 	}
-	h2Ja3Spec.OrderHeaders = []string{":method", ":authority", ":scheme", ":path"}
+	h2Ja3Spec.OrderHeaders = DefaultH2OrderHeaders()
 	h2Ja3Spec.ConnFlow = 15663105
 	return h2Ja3Spec
 }
