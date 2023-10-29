@@ -95,9 +95,14 @@ var (
 
 func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 bool, utlsConfig *utls.Config) (utlsConn *utls.UConn, err error) {
 	utlsSpec := utls.ClientHelloSpec(ja3Spec)
-	utlsSpec.Extensions = make([]utls.TLSExtension, len(ja3Spec.Extensions))
-	for i := 0; i < len(ja3Spec.Extensions); i++ {
+	total := len(ja3Spec.Extensions)
+	utlsSpec.Extensions = make([]utls.TLSExtension, total)
+	lastIndex := -1
+	for i := 0; i < total; i++ {
 		extId, extType := getExtensionId(ja3Spec.Extensions[i])
+		if extId == 41 {
+			lastIndex = i
+		}
 		switch extType {
 		case 3:
 			return nil, fmt.Errorf("unknow extentsion：%T", ja3Spec.Extensions[i])
@@ -110,6 +115,9 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 		default:
 			utlsSpec.Extensions[i] = ja3Spec.Extensions[i]
 		}
+	}
+	if lastIndex != -1 {
+		utlsSpec.Extensions[lastIndex], utlsSpec.Extensions[total-1] = utlsSpec.Extensions[total-1], utlsSpec.Extensions[lastIndex]
 	}
 	if disHttp2 {
 		for _, Extension := range utlsSpec.Extensions {
