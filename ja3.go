@@ -682,21 +682,34 @@ var defaultOrderHeaders = []string{
 	"Cookie",
 }
 
-func DefaultH2OrderHeaders() []string {
-	headers := make([]string, len(defaultOrderHeaders))
-	for i, key := range defaultOrderHeaders {
-		headers[i] = strings.ToLower(key)
-	}
-	return headers
-}
-func DefaultH1OrderHeaders() []string {
+func defaultH1OrderHeaders() []string {
 	headers := make([]string, len(defaultOrderHeaders))
 	for i, key := range defaultOrderHeaders {
 		headers[i] = textproto.CanonicalMIMEHeaderKey(key)
 	}
 	return headers
 }
+func defaultH2OrderHeaders() []string {
+	headers := make([]string, len(defaultOrderHeaders))
+	for i, key := range defaultOrderHeaders {
+		headers[i] = strings.ToLower(key)
+	}
+	return headers
+}
 
+var defaultH1OrderHeader = defaultH1OrderHeaders()
+var defaultH2OrderHeader = defaultH2OrderHeaders()
+
+func DefaultH1OrderHeaders() []string {
+	headers := make([]string, len(defaultH1OrderHeader))
+	copy(headers, defaultH1OrderHeader)
+	return headers
+}
+func DefaultH2OrderHeaders() []string {
+	headers := make([]string, len(defaultH2OrderHeader))
+	copy(headers, defaultH2OrderHeader)
+	return headers
+}
 func DefaultH2Ja3Spec() H2Ja3Spec {
 	var h2Ja3Spec H2Ja3Spec
 	h2Ja3Spec.InitialSetting = []Setting{
