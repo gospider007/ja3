@@ -651,7 +651,7 @@ func (obj Priority) IsSet() bool {
 }
 
 func DefaultJa3Spec() Ja3Spec {
-	spec, _ := CreateSpecWithId(HelloChrome_114_Padding_PSK_Shuf)
+	spec, _ := CreateSpecWithId(HelloChrome_Auto)
 	return spec
 }
 
