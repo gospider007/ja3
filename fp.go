@@ -47,6 +47,11 @@ type Extension struct {
 	Data cryptobyte.String
 }
 
+func (obj Extension) utlsExt() utls.TLSExtension {
+	ext, _ := createExtension(obj.Type, extensionOption{data: obj.Data})
+	return ext
+}
+
 func (obj ClientHello) UtlsExtensions() map[uint16]utls.TLSExtension {
 	exts := make(map[uint16]utls.TLSExtension)
 	for i := 0; i < len(obj.Extensions); i++ {

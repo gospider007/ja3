@@ -3,6 +3,7 @@ package ja3
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -389,14 +390,6 @@ func createExtension(extensionId uint16, options ...extensionOption) (utls.TLSEx
 		}
 		return extV, true
 	case 51:
-		if option.ext != nil {
-			extt := new(utls.KeyShareExtension)
-			if keyShares := option.ext.(*utls.KeyShareExtension).KeyShares; keyShares != nil {
-				extt.KeyShares = make([]utls.KeyShare, len(keyShares))
-				copy(extt.KeyShares, keyShares)
-			}
-			return extt, true
-		}
 		extV := new(utls.KeyShareExtension)
 		if option.data != nil {
 			extV.Write(option.data)
@@ -556,7 +549,7 @@ func IsGREASEUint16(v uint16) bool {
 type Ja3Spec utls.ClientHelloSpec
 
 func (obj Ja3Spec) String() string {
-	tlsVersions := []string{}
+	tlsVersions := "771"
 	cipherSuites := []string{}
 	for _, cipcipherSuite := range obj.CipherSuites {
 		if cipcipherSuite != utls.GREASE_PLACEHOLDER {
@@ -576,7 +569,7 @@ func (obj Ja3Spec) String() string {
 			case 43:
 				for _, tlsVersion := range Extension.(*utls.SupportedVersionsExtension).Versions {
 					if tlsVersion != utls.GREASE_PLACEHOLDER {
-						tlsVersions = append(tlsVersions, strconv.Itoa(int(tlsVersion)))
+						tlsVersions = strconv.Itoa(int(tlsVersion))
 						break
 					}
 				}
@@ -602,7 +595,7 @@ func (obj Ja3Spec) String() string {
 		extIdsr[i] = strconv.Itoa(extId)
 	}
 	return strings.Join([]string{
-		strings.Join(tlsVersions, "-"),
+		tlsVersions,
 		strings.Join(cipherSuites, "-"),
 		strings.Join(extIdsr, "-"),
 		strings.Join(curves, "-"),
@@ -817,24 +810,38 @@ func createTlsVersion(ver uint16) (tlsMaxVersion uint16, tlsMinVersion uint16, t
 	return
 }
 func createCiphers(ciphers []string) ([]uint16, error) {
-	cipherSuites := []uint16{utls.GREASE_PLACEHOLDER}
-	for _, val := range ciphers {
+	cipherSuites := []uint16{}
+	for i, val := range ciphers {
+		var cipherSuite uint16
 		if n, err := strconv.ParseUint(val, 10, 16); err != nil {
 			return nil, errors.New("ja3Str cipherSuites error")
 		} else {
-			cipherSuites = append(cipherSuites, uint16(n))
+			cipherSuite = uint16(n)
 		}
+		if i == 0 {
+			if cipherSuite != utls.GREASE_PLACEHOLDER {
+				cipherSuites = append(cipherSuites, utls.GREASE_PLACEHOLDER)
+			}
+		}
+		cipherSuites = append(cipherSuites, cipherSuite)
 	}
 	return cipherSuites, nil
 }
 func createCurves(curves []string) (curvesExtension utls.TLSExtension, err error) {
-	curveIds := []utls.CurveID{utls.GREASE_PLACEHOLDER}
-	for _, val := range curves {
+	curveIds := []utls.CurveID{}
+	for i, val := range curves {
+		var curveId utls.CurveID
 		if n, err := strconv.ParseUint(val, 10, 16); err != nil {
 			return nil, errors.New("ja3Str curves error")
 		} else {
-			curveIds = append(curveIds, utls.CurveID(uint16(n)))
+			curveId = utls.CurveID(uint16(n))
 		}
+		if i == 0 {
+			if curveId != utls.GREASE_PLACEHOLDER {
+				curveIds = append(curveIds, utls.GREASE_PLACEHOLDER)
+			}
+		}
+		curveIds = append(curveIds, curveId)
 	}
 	return &utls.SupportedCurvesExtension{Curves: curveIds}, nil
 }
@@ -851,38 +858,34 @@ func createPointFormats(points []string) (curvesExtension utls.TLSExtension, err
 }
 
 func createExtensions(extensions []string, tlsExtension, curvesExtension, pointExtension utls.TLSExtension) ([]utls.TLSExtension, error) {
-	allExtensions := []utls.TLSExtension{&utls.UtlsGREASEExtension{}}
-	for _, extension := range extensions {
+	allExtensions := []utls.TLSExtension{}
+	for i, extension := range extensions {
 		var extensionId uint16
 		if n, err := strconv.ParseUint(extension, 10, 16); err != nil {
 			return nil, errors.New("ja3Str extension error,utls not support: " + extension)
 		} else {
 			extensionId = uint16(n)
 		}
+		var ext utls.TLSExtension
 		switch extensionId {
 		case 10:
-			allExtensions = append(allExtensions, curvesExtension)
+			ext = curvesExtension
 		case 11:
-			allExtensions = append(allExtensions, pointExtension)
+			ext = pointExtension
 		case 43:
-			allExtensions = append(allExtensions, tlsExtension)
+			ext = tlsExtension
 		default:
-			ext, _ := createExtension(extensionId)
+			ext, _ = createExtension(extensionId)
 			if ext == nil {
-				if IsGREASEUint16(extensionId) {
-					allExtensions = append(allExtensions, &utls.UtlsGREASEExtension{})
-				}
-				allExtensions = append(allExtensions, &utls.GenericExtension{Id: extensionId})
-			} else {
-				if ext == nil {
-					return nil, errors.New("ja3Str extension error,utls not support: " + extension)
-				}
-				if extensionId == 21 {
-					allExtensions = append(allExtensions, &utls.UtlsGREASEExtension{})
-				}
-				allExtensions = append(allExtensions, ext)
+				ext = &utls.GenericExtension{Id: extensionId}
 			}
 		}
+		if i == 0 {
+			if _, ok := ext.(*utls.UtlsGREASEExtension); !ok {
+				allExtensions = append(allExtensions, &utls.UtlsGREASEExtension{})
+			}
+		}
+		allExtensions = append(allExtensions, ext)
 	}
 	return allExtensions, nil
 }
@@ -968,4 +971,31 @@ func CreateH2SpecWithStr(h2ja3SpecStr string) (h2ja3Spec H2Ja3Spec, err error) {
 		}
 	}
 	return
+}
+
+func CreateSpecWithClientHello(clienthello any) (clientHelloSpec Ja3Spec, err error) {
+	var clientHelloInfo ClientHello
+	switch value := clienthello.(type) {
+	case []byte:
+		clientHelloInfo, err = decodeClientHello(value)
+	case string:
+		v, err := hex.DecodeString(value)
+		if err != nil {
+			return clientHelloSpec, err
+		}
+		clientHelloInfo, err = decodeClientHello(v)
+	default:
+		return clientHelloSpec, errors.New("clienthello type error")
+	}
+	if err != nil {
+		return clientHelloSpec, err
+	}
+	clientHelloSpec.CipherSuites = clientHelloInfo.CipherSuites
+	clientHelloSpec.CompressionMethods = clientHelloInfo.CompressionMethods
+	clientHelloSpec.Extensions = make([]utls.TLSExtension, len(clientHelloInfo.Extensions))
+	for i, ext := range clientHelloInfo.Extensions {
+		clientHelloSpec.Extensions[i] = ext.utlsExt()
+	}
+	clientHelloSpec.GetSessionID = sha256.Sum256
+	return clientHelloSpec, nil
 }
