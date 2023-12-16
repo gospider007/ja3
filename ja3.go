@@ -71,6 +71,9 @@ var (
 	HelloChrome_115_PQ     = utls.HelloChrome_115_PQ
 	HelloChrome_115_PQ_PSK = utls.HelloChrome_115_PQ_PSK
 
+	HelloChrome_120    = utls.HelloChrome_120
+	HelloChrome_120_PQ = utls.HelloChrome_120_PQ
+
 	HelloIOS_Auto = utls.HelloIOS_Auto
 	HelloIOS_11_1 = utls.HelloIOS_11_1
 	HelloIOS_12_1 = utls.HelloIOS_12_1
@@ -450,6 +453,11 @@ func createExtension(extensionId uint16, options ...extensionOption) (utls.TLSEx
 			extV.Write(option.data)
 		}
 		return extV, true
+	case 65037:
+		if option.ext != nil {
+			return option.ext, true
+		}
+		return utls.BoringGREASEECH(), true
 	case 65281:
 		if option.ext != nil {
 			extV := *(option.ext.(*utls.RenegotiationInfoExtension))
@@ -530,6 +538,8 @@ func getExtensionId(extension utls.TLSExtension) (uint16, uint8) {
 		}
 	case *utls.FakeRecordSizeLimitExtension:
 		return 28, 0
+	case *utls.GREASEEncryptedClientHelloExtension:
+		return 65037, 0
 	case *utls.RenegotiationInfoExtension:
 		return 65281, 0
 	case *utls.GenericExtension:

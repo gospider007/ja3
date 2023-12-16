@@ -3,10 +3,10 @@ module github.com/gospider007/ja3
 go 1.21.3
 
 require (
-	github.com/gospider007/gtls v0.0.0-20231120122450-e763299259db
+	github.com/gospider007/gtls v0.0.0-20231215082710-ea089e961bcc
 	github.com/gospider007/re v0.0.0-20231024115818-adfd03636256
 	github.com/gospider007/tools v0.0.0-20231202084937-8b2bc66f8198
-	github.com/refraction-networking/utls v1.5.4
+	github.com/refraction-networking/utls v1.5.5-0.20231216063210-c4ba3ff3af8d
 	golang.org/x/crypto v0.16.0
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
 )
@@ -15,7 +15,6 @@ require (
 	github.com/andybalholm/brotli v1.0.6 // indirect
 	github.com/caddyserver/certmagic v0.20.0 // indirect
 	github.com/cloudflare/circl v1.3.6 // indirect
-	github.com/gaukas/godicttls v0.0.4 // indirect
 	github.com/google/pprof v0.0.0-20231205033806-a5a03c77bf08 // indirect
 	github.com/gospider007/kinds v0.0.0-20231024093643-7a4424f2d30e // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
