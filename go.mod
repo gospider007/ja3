@@ -6,7 +6,7 @@ require (
 	github.com/gospider007/gtls v0.0.0-20231215082710-ea089e961bcc
 	github.com/gospider007/re v0.0.0-20231024115818-adfd03636256
 	github.com/gospider007/tools v0.0.0-20231202084937-8b2bc66f8198
-	github.com/refraction-networking/utls v1.5.5-0.20231216063210-c4ba3ff3af8d
+	github.com/refraction-networking/utls v1.6.0
 	golang.org/x/crypto v0.16.0
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
 )
