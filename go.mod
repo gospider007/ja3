@@ -3,16 +3,16 @@ module github.com/gospider007/ja3
 go 1.21.3
 
 require (
-	github.com/gospider007/gtls v0.0.0-20231215082710-ea089e961bcc
+	github.com/gospider007/gtls v0.0.0-20240104034426-5073ca328e04
 	github.com/gospider007/re v0.0.0-20231024115818-adfd03636256
 	github.com/gospider007/tools v0.0.0-20231202084937-8b2bc66f8198
-	github.com/refraction-networking/utls v1.6.0
-	golang.org/x/crypto v0.17.0
-	golang.org/x/exp v0.0.0-20240103183307-be819d1f06fc
+	github.com/refraction-networking/utls v1.6.1
+	golang.org/x/crypto v0.18.0
+	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3
 )
 
 require (
-	github.com/andybalholm/brotli v1.0.6 // indirect
+	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/caddyserver/certmagic v0.20.0 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/google/pprof v0.0.0-20231212022811-ec68065c825e // indirect
@@ -28,10 +28,10 @@ require (
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
-	golang.org/x/image v0.14.0 // indirect
+	golang.org/x/image v0.15.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/tools v0.16.1 // indirect
+	golang.org/x/tools v0.17.0 // indirect
 )
