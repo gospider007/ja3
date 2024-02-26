@@ -63,6 +63,7 @@ func (obj ClientHello) UtlsExtensions() map[uint16]utls.TLSExtension {
 
 type TlsData struct {
 	connectionState    tls.ConnectionState
+	HandshakeVersion   uint16
 	Ciphers            []uint16
 	Curves             []uint16
 	Extensions         []uint16
@@ -77,7 +78,7 @@ type TlsData struct {
 }
 
 func (tlsData TlsData) Fp() (string, string) {
-	tlsVersion := fmt.Sprintf("%d", tlsData.connectionState.Version)
+	tlsVersion := fmt.Sprintf("%d", tlsData.HandshakeVersion)
 	ciphers := clearGreas(tlsData.Ciphers)
 	extensions := clearGreas(tlsData.Extensions)
 	curves := clearGreas(tlsData.Curves)
@@ -115,6 +116,7 @@ func (obj FpContextData) TlsData() (tlsData TlsData, err error) {
 		return tlsData, err
 	}
 	tlsData.connectionState = obj.connectionState
+	tlsData.HandshakeVersion = clientHello.HandshakeVersion
 	tlsData.Ciphers = clientHello.CipherSuites
 	tlsData.Curves = clientHello.Curves()
 	tlsData.Extensions = []uint16{}
