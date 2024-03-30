@@ -658,6 +658,12 @@ func DefaultJa3Spec() Ja3Spec {
 	return spec
 }
 
+var defaultOrderHeadersH2 = []string{
+	":method",
+	":authority",
+	":scheme",
+	":path",
+}
 var defaultOrderHeaders = []string{
 	":method",
 	":authority",
@@ -685,32 +691,16 @@ var defaultOrderHeaders = []string{
 	"Cookie",
 }
 
-func defaultH1OrderHeaders() []string {
+func DefaultOrderHeaders() []string {
 	headers := make([]string, len(defaultOrderHeaders))
 	for i, key := range defaultOrderHeaders {
 		headers[i] = textproto.CanonicalMIMEHeaderKey(key)
 	}
 	return headers
 }
-func defaultH2OrderHeaders() []string {
-	headers := make([]string, len(defaultOrderHeaders))
-	for i, key := range defaultOrderHeaders {
-		headers[i] = strings.ToLower(key)
-	}
-	return headers
-}
-
-var defaultH1OrderHeader = defaultH1OrderHeaders()
-var defaultH2OrderHeader = defaultH2OrderHeaders()
-
-func DefaultH1OrderHeaders() []string {
-	headers := make([]string, len(defaultH1OrderHeader))
-	copy(headers, defaultH1OrderHeader)
-	return headers
-}
-func DefaultH2OrderHeaders() []string {
-	headers := make([]string, len(defaultH2OrderHeader))
-	copy(headers, defaultH2OrderHeader)
+func DefaultOrderHeadersWithH2() []string {
+	headers := make([]string, len(defaultOrderHeadersH2))
+	copy(headers, defaultOrderHeaders)
 	return headers
 }
 func DefaultH2Ja3Spec() H2Ja3Spec {
@@ -727,7 +717,7 @@ func DefaultH2Ja3Spec() H2Ja3Spec {
 		StreamDep: 0,
 		Weight:    255,
 	}
-	h2Ja3Spec.OrderHeaders = DefaultH2OrderHeaders()
+	h2Ja3Spec.OrderHeaders = DefaultOrderHeaders()
 	h2Ja3Spec.ConnFlow = 15663105
 	return h2Ja3Spec
 }
@@ -754,6 +744,7 @@ func (obj H2Ja3Spec) Fp() string {
 	}
 	heads := []string{}
 	for _, head := range obj.OrderHeaders {
+		head = strings.ToLower(head)
 		switch head {
 		case ":method":
 			heads = append(heads, "m")
@@ -897,6 +888,11 @@ func createExtensions(extensions []string, tlsExtension, curvesExtension, pointE
 		}
 		allExtensions = append(allExtensions, ext)
 	}
+	if l := len(allExtensions); l > 0 {
+		if _, ok := allExtensions[l-1].(*utls.UtlsGREASEExtension); !ok {
+			allExtensions = append(allExtensions, &utls.UtlsGREASEExtension{})
+		}
+	}
 	return allExtensions, nil
 }
 
@@ -994,6 +990,9 @@ func CreateSpecWithClientHello(clienthello any) (clientHelloSpec Ja3Spec, err er
 			return clientHelloSpec, err
 		}
 		clientHelloInfo, err = decodeClientHello(v)
+		if err != nil {
+			return clientHelloSpec, err
+		}
 	default:
 		return clientHelloSpec, errors.New("clienthello type error")
 	}
