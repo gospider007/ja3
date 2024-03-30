@@ -207,16 +207,13 @@ func createExtension(extensionId uint16, options ...extensionOption) (utls.TLSEx
 		} else {
 			extV.SupportedSignatureAlgorithms = []utls.SignatureScheme{
 				utls.ECDSAWithP256AndSHA256,
-				utls.ECDSAWithP384AndSHA384,
-				utls.ECDSAWithP521AndSHA512,
 				utls.PSSWithSHA256,
-				utls.PSSWithSHA384,
-				utls.PSSWithSHA512,
 				utls.PKCS1WithSHA256,
+				utls.ECDSAWithP384AndSHA384,
+				utls.PSSWithSHA384,
 				utls.PKCS1WithSHA384,
+				utls.PSSWithSHA512,
 				utls.PKCS1WithSHA512,
-				utls.ECDSAWithSHA1,
-				utls.PKCS1WithSHA1,
 			}
 		}
 		return extV, true
