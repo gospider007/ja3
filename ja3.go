@@ -220,6 +220,13 @@ func createExtension(extensionId uint16, options ...extensionOption) (utls.TLSEx
 	case 16:
 		if option.ext != nil {
 			extV := *(option.ext.(*utls.ALPNExtension))
+			exts := []string{}
+			for _, alp := range extV.AlpnProtocols {
+				if alp != "" {
+					exts = append(exts, alp)
+				}
+			}
+			extV.AlpnProtocols = exts
 			return &extV, true
 		}
 		extV := new(utls.ALPNExtension)
