@@ -98,6 +98,7 @@ var (
 )
 
 func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 bool, utlsConfig *utls.Config) (utlsConn *utls.UConn, err error) {
+	utlsConfig.NextProtos = []string{"h2", "http/1.1"}
 	utlsSpec := utls.ClientHelloSpec(ja3Spec)
 	total := len(ja3Spec.Extensions)
 	utlsSpec.Extensions = make([]utls.TLSExtension, total)
@@ -141,7 +142,8 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 	if err = utlsConn.ApplyPreset(&utlsSpec); err != nil {
 		return nil, err
 	}
-	return utlsConn, utlsConn.HandshakeContext(ctx)
+	err = utlsConn.HandshakeContext(ctx)
+	return utlsConn, err
 }
 
 // https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
