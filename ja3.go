@@ -405,6 +405,7 @@ func createExtension(extensionId uint16, options ...extensionOption) (utls.TLSEx
 		} else {
 			extV.KeyShares = []utls.KeyShare{
 				{Group: utls.CurveID(utls.GREASE_PLACEHOLDER), Data: []byte{0}},
+				{Group: utls.X25519Kyber768Draft00},
 				{Group: utls.X25519},
 			}
 		}
