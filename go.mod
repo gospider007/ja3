@@ -8,7 +8,7 @@ require (
 	github.com/gospider007/tools v0.0.0-20240506025307-b6a12cb9b897
 	github.com/refraction-networking/utls v1.6.6
 	golang.org/x/crypto v0.23.0
-	golang.org/x/exp v0.0.0-20240525044651-4c93da0ed11d
+	golang.org/x/exp v0.0.0-20240530194437-404ba88c7ed0
 )
 
 require (

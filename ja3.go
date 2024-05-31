@@ -46,6 +46,7 @@ var (
 	HelloFirefox_99   = utls.HelloFirefox_99
 	HelloFirefox_102  = utls.HelloFirefox_102
 	HelloFirefox_105  = utls.HelloFirefox_105
+	HelloFirefox_120  = utls.HelloFirefox_120
 
 	HelloChrome_Auto        = utls.HelloChrome_Auto
 	HelloChrome_58          = utls.HelloChrome_58
@@ -98,8 +99,8 @@ var (
 )
 
 func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 bool, utlsConfig *utls.Config) (utlsConn *utls.UConn, err error) {
-	utlsConfig.NextProtos = []string{"h2", "http/1.1"}
 	utlsSpec := utls.ClientHelloSpec(ja3Spec)
+	utlsConfig.NextProtos = []string{"h2", "http/1.1"}
 	total := len(ja3Spec.Extensions)
 	utlsSpec.Extensions = make([]utls.TLSExtension, total)
 	lastIndex := -1
@@ -112,6 +113,12 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 		case 3:
 			return nil, fmt.Errorf("unknow extentsion：%T", ja3Spec.Extensions[i])
 		case 0:
+			// log.Print(extId)
+			// filterId := []uint16{51}
+			// if slices.Contains(filterId, extId) {
+			// 	utlsSpec.Extensions[i] = ja3Spec.Extensions[i]
+			// 	continue
+			// }
 			if ext, _ := createExtension(extId, extensionOption{ext: ja3Spec.Extensions[i]}); ext != nil {
 				utlsSpec.Extensions[i] = ext
 			} else {
@@ -143,6 +150,7 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 		return nil, err
 	}
 	err = utlsConn.HandshakeContext(ctx)
+	// log.Print(err)
 	return utlsConn, err
 }
 
@@ -399,6 +407,19 @@ func createExtension(extensionId uint16, options ...extensionOption) (utls.TLSEx
 		}
 		return extV, true
 	case 51:
+		if option.ext != nil {
+			extV := *(option.ext.(*utls.KeyShareExtension))
+			var shareOk bool
+			for _, share := range extV.KeyShares {
+				if share.Group == utls.CurveP256 {
+					shareOk = true
+				}
+			}
+			if !shareOk {
+				extV.KeyShares = append(extV.KeyShares, utls.KeyShare{Group: utls.CurveP256})
+			}
+			return &extV, true
+		}
 		extV := new(utls.KeyShareExtension)
 		if option.data != nil {
 			extV.Write(option.data)
@@ -406,6 +427,7 @@ func createExtension(extensionId uint16, options ...extensionOption) (utls.TLSEx
 			extV.KeyShares = []utls.KeyShare{
 				{Group: utls.CurveID(utls.GREASE_PLACEHOLDER), Data: []byte{0}},
 				{Group: utls.X25519},
+				{Group: utls.CurveP256}, //特殊网站会检测
 			}
 		}
 		return extV, true
