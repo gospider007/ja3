@@ -961,6 +961,7 @@ func CreateSpecWithStr(ja3Str string) (clientHelloSpec Ja3Spec, err error) {
 	return
 }
 
+// example："1:65536,2:0,4:6291456,6:262144|15663105|0|m,a,s,p"
 func CreateH2SpecWithStr(h2ja3SpecStr string) (h2ja3Spec H2Ja3Spec, err error) {
 	tokens := strings.Split(h2ja3SpecStr, "|")
 	if len(tokens) != 4 {
