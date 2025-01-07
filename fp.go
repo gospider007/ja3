@@ -20,7 +20,7 @@ import (
 
 type FpContextData struct {
 	clientHelloData []byte
-	h2Ja3Spec       H2Ja3Spec
+	h2Ja3Spec       H2Spec
 	connectionState tls.ConnectionState
 	orderHeaders    []string
 }
@@ -375,8 +375,8 @@ func (obj *FpContextData) Ja4H(req *http.Request) string {
 				orderHeaders = append(orderHeaders, cook)
 			}
 		}
-	} else if obj.H2Ja3Spec().OrderHeaders != nil {
-		for _, cook := range obj.H2Ja3Spec().OrderHeaders {
+	} else if obj.H2Spec().OrderHeaders != nil {
+		for _, cook := range obj.H2Spec().OrderHeaders {
 			if cook != "Cookie" && cook != "Referer" {
 				orderHeaders = append(orderHeaders, cook)
 			}
@@ -406,7 +406,7 @@ func (obj *FpContextData) SetConnectionState(val tls.ConnectionState) {
 func (obj *FpContextData) ClientHello() (ClientHello, error) {
 	return decodeClientHello(obj.clientHelloData)
 }
-func (obj *FpContextData) H2Ja3Spec() H2Ja3Spec {
+func (obj *FpContextData) H2Spec() H2Spec {
 	return obj.h2Ja3Spec
 }
 

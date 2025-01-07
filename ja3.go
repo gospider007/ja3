@@ -11,13 +11,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gospider007/http3"
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/exp/slices"
 )
 
 type ClientHelloId = utls.ClientHelloID
 
-func ShuffleExtensions(chs *Ja3Spec) {
+func ShuffleExtensions(chs *Spec) {
 	chs.Extensions = utls.ShuffleChromeTLSExtensions(chs.Extensions)
 }
 
@@ -98,9 +99,8 @@ var (
 	HelloQQ_11_1 = utls.HelloQQ_11_1
 )
 
-func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 bool, utlsConfig *utls.Config) (utlsConn *utls.UConn, err error) {
+func CreateSpecWithSpec(ja3Spec Spec, h2 bool, h3 bool) (utls.ClientHelloSpec, error) {
 	utlsSpec := utls.ClientHelloSpec(ja3Spec)
-	utlsConfig.NextProtos = []string{"h2", "http/1.1"}
 	total := len(ja3Spec.Extensions)
 	utlsSpec.Extensions = make([]utls.TLSExtension, total)
 	lastIndex := -1
@@ -111,14 +111,8 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 		}
 		switch extType {
 		case 3:
-			return nil, fmt.Errorf("unknow extentsion：%T", ja3Spec.Extensions[i])
+			return utlsSpec, fmt.Errorf("unknow extentsion：%T", ja3Spec.Extensions[i])
 		case 0:
-			// log.Print(extId)
-			// filterId := []uint16{51}
-			// if slices.Contains(filterId, extId) {
-			// 	utlsSpec.Extensions[i] = ja3Spec.Extensions[i]
-			// 	continue
-			// }
 			if ext, _ := createExtension(extId, extensionOption{ext: ja3Spec.Extensions[i]}); ext != nil {
 				utlsSpec.Extensions[i] = ext
 			} else {
@@ -131,7 +125,15 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 	if lastIndex != -1 {
 		utlsSpec.Extensions[lastIndex], utlsSpec.Extensions[total-1] = utlsSpec.Extensions[total-1], utlsSpec.Extensions[lastIndex]
 	}
-	if disHttp2 {
+	if h3 {
+		for _, Extension := range utlsSpec.Extensions {
+			alpns, ok := Extension.(*utls.ALPNExtension)
+			if ok {
+				alpns.AlpnProtocols = []string{http3.NextProtoH3}
+				break
+			}
+		}
+	} else if !h2 {
 		for _, Extension := range utlsSpec.Extensions {
 			alpns, ok := Extension.(*utls.ALPNExtension)
 			if ok {
@@ -144,6 +146,13 @@ func NewClient(ctx context.Context, conn net.Conn, ja3Spec Ja3Spec, disHttp2 boo
 				break
 			}
 		}
+	}
+	return utlsSpec, nil
+}
+func NewClient(ctx context.Context, conn net.Conn, ja3Spec Spec, h2 bool, utlsConfig *utls.Config) (utlsConn *utls.UConn, err error) {
+	utlsSpec, err := CreateSpecWithSpec(ja3Spec, h2, false)
+	if err != nil {
+		return nil, err
 	}
 	utlsConn = utls.UClient(conn, utlsConfig, utls.HelloCustom)
 	if err = utlsConn.ApplyPreset(&utlsSpec); err != nil {
@@ -584,9 +593,9 @@ func IsGREASEUint16(v uint16) bool {
 	return ((v >> 8) == v&0xff) && v&0xf == 0xa
 }
 
-type Ja3Spec utls.ClientHelloSpec
+type Spec utls.ClientHelloSpec
 
-func (obj Ja3Spec) String() string {
+func (obj Spec) String() string {
 	tlsVersions := "771"
 	cipherSuites := []string{}
 	for _, cipcipherSuite := range obj.CipherSuites {
@@ -642,12 +651,9 @@ func (obj Ja3Spec) String() string {
 }
 
 // have value
-func (obj Ja3Spec) IsSet() bool {
-	if obj.CipherSuites != nil || obj.Extensions != nil || obj.CompressionMethods != nil ||
-		obj.TLSVersMax != 0 || obj.TLSVersMin != 0 {
-		return true
-	}
-	return false
+func (obj Spec) IsSet() bool {
+	return obj.CipherSuites != nil || obj.Extensions != nil || obj.CompressionMethods != nil ||
+		obj.TLSVersMax != 0 || obj.TLSVersMin != 0
 }
 
 type Setting struct {
@@ -681,9 +687,8 @@ func (obj Priority) IsSet() bool {
 	return false
 }
 
-func DefaultJa3Spec() Ja3Spec {
-	spec, _ := CreateSpecWithId(HelloChrome_Auto)
-	return spec
+func DefaultSpec() Spec {
+	return CreateSpecWithId(HelloChrome_Auto)
 }
 
 var defaultOrderHeadersH2 = []string{
@@ -731,26 +736,26 @@ func DefaultOrderHeadersWithH2() []string {
 	copy(headers, defaultOrderHeaders)
 	return headers
 }
-func DefaultH2Ja3Spec() H2Ja3Spec {
-	var h2Ja3Spec H2Ja3Spec
-	h2Ja3Spec.InitialSetting = []Setting{
+func DefaultH2Spec() H2Spec {
+	var h2Spec H2Spec
+	h2Spec.InitialSetting = []Setting{
 		{Id: 1, Val: 65536},
 		{Id: 2, Val: 0},
 		{Id: 3, Val: 1000},
 		{Id: 4, Val: 6291456},
 		{Id: 6, Val: 262144},
 	}
-	h2Ja3Spec.Priority = Priority{
+	h2Spec.Priority = Priority{
 		Exclusive: true,
 		StreamDep: 0,
 		Weight:    255,
 	}
-	h2Ja3Spec.OrderHeaders = DefaultOrderHeaders()
-	h2Ja3Spec.ConnFlow = 15663105
-	return h2Ja3Spec
+	h2Spec.OrderHeaders = DefaultOrderHeaders()
+	h2Spec.ConnFlow = 15663105
+	return h2Spec
 }
 
-type H2Ja3Spec struct {
+type H2Spec struct {
 	InitialSetting []Setting
 	ConnFlow       uint32   //WINDOW_UPDATE:15663105
 	OrderHeaders   []string //example：[]string{":method",":authority",":scheme",":path"}
@@ -758,14 +763,14 @@ type H2Ja3Spec struct {
 }
 
 // have value
-func (obj H2Ja3Spec) IsSet() bool {
+func (obj H2Spec) IsSet() bool {
 	if obj.InitialSetting != nil || obj.ConnFlow != 0 || obj.OrderHeaders != nil || obj.Priority.IsSet() {
 		return true
 	}
 	return false
 }
 
-func (obj H2Ja3Spec) Fp() string {
+func (obj H2Spec) Fp() string {
 	settings := []string{}
 	for _, setting := range obj.InitialSetting {
 		settings = append(settings, fmt.Sprintf("%d:%d", setting.Id, setting.Val))
@@ -792,12 +797,9 @@ func (obj H2Ja3Spec) Fp() string {
 	}, "|")
 }
 
-func CreateSpecWithId(ja3Id ClientHelloId) (clientHelloSpec Ja3Spec, err error) {
-	spec, err := utls.UTLSIdToSpec(ja3Id)
-	if err != nil {
-		return clientHelloSpec, err
-	}
-	return Ja3Spec(spec), nil
+func CreateSpecWithId(ja3Id ClientHelloId) (clientHelloSpec Spec) {
+	spec, _ := utls.UTLSIdToSpec(ja3Id)
+	return Spec(spec)
 }
 
 // TLSVersion，Ciphers，Extensions，EllipticCurves，EllipticCurvePointFormats
@@ -925,7 +927,7 @@ func createExtensions(extensions []string, tlsExtension, curvesExtension, pointE
 }
 
 // ja3 字符串中生成 clientHello
-func CreateSpecWithStr(ja3Str string) (clientHelloSpec Ja3Spec, err error) {
+func CreateSpecWithStr(ja3Str string) (clientHelloSpec Spec, err error) {
 	tokens := strings.Split(ja3Str, ",")
 	if len(tokens) != 5 {
 		return clientHelloSpec, errors.New("ja3Str format error")
@@ -962,7 +964,7 @@ func CreateSpecWithStr(ja3Str string) (clientHelloSpec Ja3Spec, err error) {
 }
 
 // example："1:65536,2:0,4:6291456,6:262144|15663105|0|m,a,s,p"
-func CreateH2SpecWithStr(h2ja3SpecStr string) (h2ja3Spec H2Ja3Spec, err error) {
+func CreateH2SpecWithStr(h2ja3SpecStr string) (h2ja3Spec H2Spec, err error) {
 	tokens := strings.Split(h2ja3SpecStr, "|")
 	if len(tokens) != 4 {
 		err = errors.New("h2 spec format error")
@@ -1008,7 +1010,7 @@ func CreateH2SpecWithStr(h2ja3SpecStr string) (h2ja3Spec H2Ja3Spec, err error) {
 	return
 }
 
-func CreateSpecWithClientHello(clienthello any) (clientHelloSpec Ja3Spec, err error) {
+func CreateSpecWithClientHello(clienthello any) (clientHelloSpec Spec, err error) {
 	var clientHelloInfo ClientHello
 	switch value := clienthello.(type) {
 	case []byte:
