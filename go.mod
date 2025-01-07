@@ -6,7 +6,7 @@ require (
 	github.com/gospider007/gtls v0.0.0-20250102091721-c5d429cea809
 	github.com/gospider007/http3 v0.0.0-20250102093206-281d03368c89
 	github.com/gospider007/re v0.0.0-20241216142712-efbef8d55ea2
-	github.com/gospider007/tools v0.0.0-20241216141313-4a832f55a843
+	github.com/gospider007/tools v0.0.0-20250107090942-5b406ab8a72b
 	github.com/refraction-networking/uquic v0.0.6
 	github.com/refraction-networking/utls v1.6.7
 	golang.org/x/crypto v0.32.0
@@ -59,5 +59,6 @@ require (
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/time v0.8.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
 )
