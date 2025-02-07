@@ -656,10 +656,21 @@ func (obj Spec) IsSet() bool {
 		obj.TLSVersMax != 0 || obj.TLSVersMin != 0
 }
 
+type Http2SettingID uint16
+
+const (
+	Http2SettingHeaderTableSize      Http2SettingID = 0x1
+	Http2SettingEnablePush           Http2SettingID = 0x2
+	Http2SettingMaxConcurrentStreams Http2SettingID = 0x3
+	Http2SettingInitialWindowSize    Http2SettingID = 0x4
+	Http2SettingMaxFrameSize         Http2SettingID = 0x5
+	Http2SettingMaxHeaderListSize    Http2SettingID = 0x6
+)
+
 type Setting struct {
 	// ID is which setting is being set.
 	// See https://httpwg.org/specs/rfc7540.html#SettingFormat
-	Id uint16
+	Id Http2SettingID
 	// Val is the value.
 	Val uint32
 }
@@ -985,7 +996,7 @@ func CreateH2SpecWithStr(h2ja3SpecStr string) (h2ja3Spec H2Spec, err error) {
 			return
 		}
 		h2ja3Spec.InitialSetting = append(h2ja3Spec.InitialSetting, Setting{
-			Id:  uint16(ttKey),
+			Id:  Http2SettingID(ttKey),
 			Val: uint32(ttVal),
 		})
 	}
