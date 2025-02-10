@@ -47,18 +47,122 @@ type Extension struct {
 	Data cryptobyte.String
 }
 
-func (obj Extension) utlsExt() utls.TLSExtension {
-	ext, _ := createExtension(obj.Type, extensionOption{data: obj.Data})
-	return ext
+func createExtension(extensionId uint16, data []byte) utls.TLSExtension {
+	switch extensionId {
+	case 0:
+		return new(utls.SNIExtension)
+	case 5:
+		return new(utls.StatusRequestExtension)
+	case 10:
+		extV := new(utls.SupportedCurvesExtension)
+		extV.Write(data)
+		return extV
+	case 11:
+		extV := new(utls.SupportedPointsExtension)
+		extV.Write(data)
+		return extV
+	case 13:
+		extV := new(utls.SignatureAlgorithmsExtension)
+		extV.Write(data)
+		return extV
+	case 16:
+		extV := new(utls.ALPNExtension)
+		extV.Write(data)
+		return extV
+	case 17:
+		return new(utls.StatusRequestV2Extension)
+	case 18:
+		return new(utls.SCTExtension)
+	case 21:
+		extV := new(utls.UtlsPaddingExtension)
+		extV.Write(data)
+		return extV
+	case 23:
+		return new(utls.ExtendedMasterSecretExtension)
+	case 24:
+		extV := new(utls.FakeTokenBindingExtension)
+		extV.Write(data)
+		return extV
+	case 27:
+		extV := new(utls.UtlsCompressCertExtension)
+		extV.Write(data)
+		return extV
+	case 28:
+		extV := new(utls.FakeRecordSizeLimitExtension)
+		extV.Write(data)
+		return extV
+	case 34:
+		extV := new(utls.FakeDelegatedCredentialsExtension)
+		extV.Write(data)
+		return extV
+	case 35:
+		return new(utls.SessionTicketExtension)
+	case 41:
+		return new(utls.UtlsPreSharedKeyExtension)
+	case 43:
+		extV := new(utls.SupportedVersionsExtension)
+		extV.Write(data)
+		return extV
+	case 44:
+		return new(utls.CookieExtension)
+	case 45:
+		extV := new(utls.PSKKeyExchangeModesExtension)
+		extV.Write(data)
+		return extV
+	case 50:
+		extV := new(utls.SignatureAlgorithmsCertExtension)
+		extV.Write(data)
+		return extV
+	case 51:
+		extV := new(utls.KeyShareExtension)
+		extV.Write(data)
+		shares := []utls.KeyShare{}
+		for _, share := range extV.KeyShares {
+			if share.Group != 4588 {
+				shares = append(shares, share)
+			}
+		}
+		extV.KeyShares = shares
+		if len(extV.KeyShares) == 0 {
+			extV.KeyShares = []utls.KeyShare{
+				{Group: utls.CurveID(utls.GREASE_PLACEHOLDER), Data: []byte{0}},
+				{Group: utls.X25519},
+			}
+		}
+		return extV
+	case 57:
+		return new(utls.QUICTransportParametersExtension)
+	case 13172:
+		extV := new(utls.NPNExtension)
+		extV.Write(data)
+		return extV
+	case 17513:
+		extV := new(utls.ApplicationSettingsExtension)
+		extV.Write(data)
+		return extV
+	case 30031:
+		extV := new(utls.FakeChannelIDExtension)
+		extV.OldExtensionID = true
+		return extV
+	case 30032:
+		extV := new(utls.FakeChannelIDExtension)
+		return extV
+	case 65037:
+		return utls.BoringGREASEECH()
+	case 65281:
+		extV := new(utls.RenegotiationInfoExtension)
+		extV.Write(data)
+		return extV
+	default:
+		return &utls.GenericExtension{
+			Id:   extensionId,
+			Data: data,
+		}
+	}
 }
 
-func (obj ClientHello) UtlsExtensions() map[uint16]utls.TLSExtension {
-	exts := make(map[uint16]utls.TLSExtension)
-	for i := 0; i < len(obj.Extensions); i++ {
-		ext, _ := createExtension(obj.Extensions[i].Type, extensionOption{data: obj.Extensions[i].Data})
-		exts[obj.Extensions[i].Type] = ext
-	}
-	return exts
+func (obj Extension) utlsExt() utls.TLSExtension {
+	return createExtension(obj.Type, obj.Data)
 }
 
 type TlsData struct {
@@ -98,7 +202,11 @@ func (tlsData TlsData) Fp() (string, string) {
 	}, ",")
 	return ja3Str, ja3nStr
 }
-
+func IsGREASEUint16(v uint16) bool {
+	// First byte is same as second byte
+	// and lowest nibble is 0xa
+	return ((v >> 8) == v&0xff) && v&0xf == 0xa
+}
 func clearGreas(values []uint16) []uint16 {
 	results := []uint16{}
 	for _, value := range values {
@@ -139,9 +247,9 @@ func (obj FpContextData) TlsData() (tlsData TlsData, err error) {
 func (obj ClientHello) Points() []uint8 {
 	for _, ext := range obj.Extensions {
 		if ext.Type == 11 {
-			if utlsExt, ok := createExtension(ext.Type, extensionOption{data: ext.Data}); ok {
-				return utlsExt.(*utls.SupportedPointsExtension).SupportedPoints
-			}
+			ex := new(utls.SupportedPointsExtension)
+			ex.Write(ext.Data)
+			return ex.SupportedPoints
 		}
 	}
 	return nil
@@ -151,9 +259,9 @@ func (obj ClientHello) Points() []uint8 {
 func (obj ClientHello) Protocols() []string {
 	for _, ext := range obj.Extensions {
 		if ext.Type == 16 {
-			if utlsExt, ok := createExtension(ext.Type, extensionOption{data: ext.Data}); ok {
-				return utlsExt.(*utls.ALPNExtension).AlpnProtocols
-			}
+			ex := new(utls.ALPNExtension)
+			ex.Write(ext.Data)
+			return ex.AlpnProtocols
 		}
 	}
 	return nil
@@ -163,9 +271,9 @@ func (obj ClientHello) Protocols() []string {
 func (obj ClientHello) Versions() []uint16 {
 	for _, ext := range obj.Extensions {
 		if ext.Type == 43 {
-			if utlsExt, ok := createExtension(ext.Type, extensionOption{data: ext.Data}); ok {
-				return utlsExt.(*utls.SupportedVersionsExtension).Versions
-			}
+			ex := new(utls.SupportedVersionsExtension)
+			ex.Write(ext.Data)
+			return ex.Versions
 		}
 	}
 	return nil
@@ -175,13 +283,13 @@ func (obj ClientHello) Versions() []uint16 {
 func (obj ClientHello) Algorithms() []uint16 {
 	for _, ext := range obj.Extensions {
 		if ext.Type == 13 {
-			if utlsExt, ok := createExtension(ext.Type, extensionOption{data: ext.Data}); ok {
-				algorithms := []uint16{}
-				for _, algorithm := range utlsExt.(*utls.SignatureAlgorithmsExtension).SupportedSignatureAlgorithms {
-					algorithms = append(algorithms, uint16(algorithm))
-				}
-				return algorithms
+			ex := new(utls.SignatureAlgorithmsExtension)
+			ex.Write(ext.Data)
+			algorithms := make([]uint16, len(ex.SupportedSignatureAlgorithms))
+			for i, algorithm := range ex.SupportedSignatureAlgorithms {
+				algorithms[i] = uint16(algorithm)
 			}
+			return algorithms
 		}
 	}
 	return nil
@@ -191,13 +299,13 @@ func (obj ClientHello) Algorithms() []uint16 {
 func (obj ClientHello) Curves() []uint16 {
 	for _, ext := range obj.Extensions {
 		if ext.Type == 10 {
-			if utlsExt, ok := createExtension(ext.Type, extensionOption{data: ext.Data}); ok {
-				algorithms := []uint16{}
-				for _, algorithm := range utlsExt.(*utls.SupportedCurvesExtension).Curves {
-					algorithms = append(algorithms, uint16(algorithm))
-				}
-				return algorithms
+			ex := new(utls.SupportedCurvesExtension)
+			ex.Write(ext.Data)
+			algorithms := make([]uint16, len(ex.Curves))
+			for i, algorithm := range ex.Curves {
+				algorithms[i] = uint16(algorithm)
 			}
+			return algorithms
 		}
 	}
 	return nil
