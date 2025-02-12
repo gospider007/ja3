@@ -10,13 +10,87 @@ import (
 	"net/textproto"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/gospider007/http3"
+	"github.com/gospider007/kinds"
+	"github.com/gospider007/re"
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/exp/slices"
 )
 
-func CreateSpecWithSpec(utlsSpec Spec, h2 bool, h3 bool) (Spec, error) {
+type specErr struct {
+	KeyShareExtension *kinds.Set[uint16]
+}
+type Client struct {
+	specErrData sync.Map
+}
+
+func NewClient() *Client {
+	return &Client{}
+}
+func (obj *Client) setSpecErrWithKeyShareExtension(key string, value uint16) (change bool) {
+	errData, ok := obj.specErrData.Load(key)
+	if ok {
+		specErr := errData.(*specErr)
+		if !specErr.KeyShareExtension.Has(value) {
+			change = true
+			specErr.KeyShareExtension.Add(value)
+		}
+	} else {
+		change = true
+		obj.specErrData.Store(key, &specErr{KeyShareExtension: kinds.NewSet(value)})
+	}
+	return
+}
+func (obj *Client) setSpecErrWithError(key string, err error) (change bool) {
+	keyShareExtensionRs := re.Search(`unsupported Curve in KeyShareExtension: CurveID\((\d+)\)`, err.Error())
+	if keyShareExtensionRs != nil {
+		i, err := strconv.Atoi(keyShareExtensionRs.Group(1))
+		if err == nil {
+			if obj.setSpecErrWithKeyShareExtension(key, uint16(i)) {
+				change = true
+			}
+		}
+	}
+	return
+}
+func (obj *Client) changeSpec(key string, spec utls.ClientHelloSpec) (change bool) {
+	errData, ok := obj.specErrData.Load(key)
+	if !ok {
+		return
+	}
+	specErr := errData.(*specErr)
+	for _, ext := range spec.Extensions {
+		switch extData := ext.(type) {
+		case *utls.KeyShareExtension:
+			if specErr.KeyShareExtension.Len() > 0 {
+				keyShares := []utls.KeyShare{}
+				for _, keyShare := range extData.KeyShares {
+					if !specErr.KeyShareExtension.Has(uint16(keyShare.Group)) {
+						change = true
+						keyShares = append(keyShares, keyShare)
+					}
+				}
+				extData.KeyShares = keyShares
+			}
+		case *utls.SupportedCurvesExtension:
+			if specErr.KeyShareExtension.Len() > 0 {
+				keyShares := []utls.CurveID{}
+				for _, keyShare := range extData.Curves {
+					if !specErr.KeyShareExtension.Has(uint16(keyShare)) {
+						change = true
+						keyShares = append(keyShares, keyShare)
+					}
+				}
+				extData.Curves = keyShares
+			}
+		}
+	}
+	return
+}
+
+func createSpecWithSpec(utlsSpec utls.ClientHelloSpec, h2 bool, h3 bool) (utls.ClientHelloSpec, error) {
 	if h3 {
 		for _, Extension := range utlsSpec.Extensions {
 			alpns, ok := Extension.(*utls.ALPNExtension)
@@ -41,180 +115,30 @@ func CreateSpecWithSpec(utlsSpec Spec, h2 bool, h3 bool) (Spec, error) {
 	}
 	return utlsSpec, nil
 }
-func NewClient(ctx context.Context, conn net.Conn, ja3Spec Spec, h2 bool, utlsConfig *utls.Config) (utlsConn *utls.UConn, err error) {
-	utlsSpec, err := CreateSpecWithSpec(ja3Spec, h2, false)
+
+func (obj *Client) Client(ctx context.Context, conn net.Conn, ja3Spec utls.ClientHelloSpec, h2 bool, utlsConfig *utls.Config, serverName string) (utlsConn *utls.UConn, err error) {
+	utlsSpec, err := createSpecWithSpec(ja3Spec, h2, false)
 	if err != nil {
 		return nil, err
 	}
+	utlsConfig.ServerName = serverName
+	obj.changeSpec(serverName, utlsSpec)
 	utlsConn = utls.UClient(conn, utlsConfig, utls.HelloCustom)
 	uspec := utls.ClientHelloSpec(utlsSpec)
-	if err = utlsConn.ApplyPreset(&uspec); err != nil {
-		return nil, err
+	for {
+		err = utlsConn.ApplyPreset(&uspec)
+		if err == nil {
+			break
+		}
+		if !obj.setSpecErrWithError(serverName, err) {
+			return nil, err
+		}
+		if !obj.changeSpec(serverName, utlsSpec) {
+			return nil, err
+		}
 	}
 	err = utlsConn.HandshakeContext(ctx)
-	// log.Print(err)
 	return utlsConn, err
-}
-
-// type,0: is ext, 1：custom ext，2：grease ext , 3：unknow ext
-func getExtensionId(extension utls.TLSExtension) (utls.TLSExtension, uint16, uint8) {
-	switch ext := extension.(type) {
-	case *utls.SNIExtension:
-		extClone := *ext
-		return &extClone, 0, 0
-	case *utls.StatusRequestExtension:
-		extClone := *ext
-		return &extClone, 5, 0
-	case *utls.SupportedCurvesExtension:
-		extClone := *ext
-		return &extClone, 10, 0
-	case *utls.SupportedPointsExtension:
-		extClone := *ext
-		return &extClone, 11, 0
-	case *utls.SignatureAlgorithmsExtension:
-		extClone := *ext
-		return &extClone, 13, 0
-	case *utls.ALPNExtension:
-		extClone := *ext
-		return &extClone, 16, 0
-	case *utls.StatusRequestV2Extension:
-		extClone := *ext
-		return &extClone, 17, 0
-	case *utls.SCTExtension:
-		extClone := *ext
-		return &extClone, 18, 0
-	case *utls.UtlsPaddingExtension:
-		extClone := *ext
-		return &extClone, 21, 0
-	case *utls.ExtendedMasterSecretExtension:
-		extClone := *ext
-		return &extClone, 23, 0
-	case *utls.FakeTokenBindingExtension:
-		extClone := *ext
-		return &extClone, 24, 0
-	case *utls.UtlsCompressCertExtension:
-		extClone := *ext
-		return &extClone, 27, 0
-	case *utls.FakeRecordSizeLimitExtension:
-		extClone := *ext
-		return &extClone, 28, 0
-	case *utls.FakeDelegatedCredentialsExtension:
-		extClone := *ext
-		return &extClone, 34, 0
-	case *utls.SessionTicketExtension:
-		extClone := *ext
-		return &extClone, 35, 0
-	case *utls.UtlsPreSharedKeyExtension:
-		extClone := *ext
-		return &extClone, 41, 0
-	case *utls.SupportedVersionsExtension:
-		extClone := *ext
-		return &extClone, 43, 0
-	case *utls.CookieExtension:
-		extClone := *ext
-		return &extClone, 44, 0
-	case *utls.PSKKeyExchangeModesExtension:
-		extClone := *ext
-		return &extClone, 45, 0
-	case *utls.SignatureAlgorithmsCertExtension:
-		extClone := *ext
-		return &extClone, 50, 0
-	case *utls.KeyShareExtension:
-		extClone := *ext
-		return &extClone, 51, 0
-	case *utls.QUICTransportParametersExtension:
-		extClone := *ext
-		return &extClone, 57, 0
-	case *utls.NPNExtension:
-		extClone := *ext
-		return &extClone, 13172, 0
-	case *utls.ApplicationSettingsExtension:
-		extClone := *ext
-		return &extClone, 17513, 0
-	case *utls.FakeChannelIDExtension:
-		if ext.OldExtensionID {
-			extClone := *ext
-			return &extClone, 30031, 0
-		} else {
-			extClone := *ext
-			return &extClone, 30032, 0
-		}
-	case *utls.GREASEEncryptedClientHelloExtension:
-		return ext, 65037, 0
-	case *utls.RenegotiationInfoExtension:
-		extClone := *ext
-		return &extClone, 65281, 0
-	case *utls.GenericExtension:
-		extClone := *ext
-		return &extClone, ext.Id, 1
-	case *utls.UtlsGREASEExtension:
-		extClone := *ext
-		return &extClone, 0, 2
-	default:
-		return nil, 0, 3
-	}
-}
-
-type Spec utls.ClientHelloSpec
-
-func (obj Spec) String() string {
-	tlsVersions := "771"
-	cipherSuites := []string{}
-	for _, cipcipherSuite := range obj.CipherSuites {
-		if cipcipherSuite != utls.GREASE_PLACEHOLDER {
-			cipherSuites = append(cipherSuites, strconv.Itoa(int(cipcipherSuite)))
-		}
-	}
-	extIds := []int{}
-	curves := []string{}
-	points := []string{}
-
-	for _, Extension := range obj.Extensions {
-		_, extId, extType := getExtensionId(Extension)
-		switch extType {
-		case 0:
-			extIds = append(extIds, int(extId))
-			switch extId {
-			case 43:
-				for _, tlsVersion := range Extension.(*utls.SupportedVersionsExtension).Versions {
-					if tlsVersion != utls.GREASE_PLACEHOLDER {
-						tlsVersions = strconv.Itoa(int(tlsVersion))
-						break
-					}
-				}
-			case 10:
-				for _, curve := range Extension.(*utls.SupportedCurvesExtension).Curves {
-					if curve != utls.GREASE_PLACEHOLDER {
-						curves = append(curves, strconv.Itoa(int(curve)))
-					}
-				}
-			case 11:
-				for _, point := range Extension.(*utls.SupportedPointsExtension).SupportedPoints {
-					points = append(points, strconv.Itoa(int(point)))
-				}
-			}
-		case 1:
-			extIds = append(extIds, int(Extension.(*utls.GenericExtension).Id))
-		}
-
-	}
-	// slices.Sort(extIds)
-	extIdsr := make([]string, len(extIds))
-	for i, extId := range extIds {
-		extIdsr[i] = strconv.Itoa(extId)
-	}
-	return strings.Join([]string{
-		tlsVersions,
-		strings.Join(cipherSuites, "-"),
-		strings.Join(extIdsr, "-"),
-		strings.Join(curves, "-"),
-		strings.Join(points, "-"),
-	}, ",")
-}
-
-// have value
-func (obj Spec) IsSet() bool {
-	return len(obj.Extensions) != 0
 }
 
 type Http2SettingID uint16
@@ -259,8 +183,9 @@ func (obj Priority) IsSet() bool {
 	return false
 }
 
-func DefaultSpec() Spec {
-	return CreateSpecWithId(utls.HelloChrome_Auto)
+func DefaultSpec() utls.ClientHelloSpec {
+	spec, _ := CreateSpecWithClientHello(utls.HelloChrome_Auto)
+	return spec
 }
 
 var defaultOrderHeadersH2 = []string{
@@ -369,12 +294,6 @@ func (obj H2Spec) Fp() string {
 	}, "|")
 }
 
-func CreateSpecWithId(ja3Id utls.ClientHelloID) Spec {
-	spec, _ := utls.UTLSIdToSpec(ja3Id)
-	spec.Extensions = clearExtensions(spec.Extensions)
-	return Spec(spec)
-}
-
 // example："1:65536,2:0,4:6291456,6:262144|15663105|0|m,a,s,p"
 func CreateH2SpecWithStr(h2ja3SpecStr string) (h2ja3Spec H2Spec, err error) {
 	tokens := strings.Split(h2ja3SpecStr, "|")
@@ -422,7 +341,7 @@ func CreateH2SpecWithStr(h2ja3SpecStr string) (h2ja3Spec H2Spec, err error) {
 	return
 }
 
-func CreateSpecWithClientHello(clienthello any) (clientHelloSpec Spec, err error) {
+func CreateSpecWithClientHello(clienthello any) (clientHelloSpec utls.ClientHelloSpec, err error) {
 	var clientHelloInfo ClientHello
 	switch value := clienthello.(type) {
 	case []byte:
@@ -430,6 +349,8 @@ func CreateSpecWithClientHello(clienthello any) (clientHelloSpec Spec, err error
 		if err != nil {
 			return clientHelloSpec, err
 		}
+	case utls.ClientHelloID:
+		return utls.UTLSIdToSpec(value)
 	case string:
 		v, err := hex.DecodeString(value)
 		if err != nil {

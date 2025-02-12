@@ -116,19 +116,6 @@ func createExtension(extensionId uint16, data []byte) utls.TLSExtension {
 	case 51:
 		extV := new(utls.KeyShareExtension)
 		extV.Write(data)
-		shares := []utls.KeyShare{}
-		for _, share := range extV.KeyShares {
-			if share.Group != 4588 {
-				shares = append(shares, share)
-			}
-		}
-		extV.KeyShares = shares
-		if len(extV.KeyShares) == 0 {
-			extV.KeyShares = []utls.KeyShare{
-				{Group: utls.CurveID(utls.GREASE_PLACEHOLDER), Data: []byte{0}},
-				{Group: utls.X25519},
-			}
-		}
 		return extV
 	case 57:
 		return new(utls.QUICTransportParametersExtension)
