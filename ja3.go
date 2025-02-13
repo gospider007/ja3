@@ -12,11 +12,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gospider007/http3"
 	"github.com/gospider007/kinds"
 	"github.com/gospider007/re"
 	utls "github.com/refraction-networking/utls"
-	"golang.org/x/exp/slices"
 )
 
 type specErr struct {
@@ -90,36 +88,18 @@ func (obj *Client) changeSpec(key string, spec utls.ClientHelloSpec) (change boo
 	return
 }
 
-func createSpecWithSpec(utlsSpec utls.ClientHelloSpec, h2 bool, h3 bool) (utls.ClientHelloSpec, error) {
-	if h3 {
+func (obj *Client) Client(ctx context.Context, conn net.Conn, utlsSpec utls.ClientHelloSpec, utlsConfig *utls.Config, serverName string, forceHttp1 bool) (utlsConn *utls.UConn, err error) {
+	if forceHttp1 {
+		utlsConfig.NextProtos = []string{"http/1.1"}
 		for _, Extension := range utlsSpec.Extensions {
 			alpns, ok := Extension.(*utls.ALPNExtension)
 			if ok {
-				alpns.AlpnProtocols = []string{http3.NextProtoH3}
+				alpns.AlpnProtocols = []string{"http/1.1"}
 				break
 			}
 		}
-	} else if !h2 {
-		for _, Extension := range utlsSpec.Extensions {
-			alpns, ok := Extension.(*utls.ALPNExtension)
-			if ok {
-				if i := slices.Index(alpns.AlpnProtocols, "h2"); i != -1 {
-					alpns.AlpnProtocols = slices.Delete(alpns.AlpnProtocols, i, i+1)
-				}
-				if !slices.Contains(alpns.AlpnProtocols, "http/1.1") {
-					alpns.AlpnProtocols = append([]string{"http/1.1"}, alpns.AlpnProtocols...)
-				}
-				break
-			}
-		}
-	}
-	return utlsSpec, nil
-}
-
-func (obj *Client) Client(ctx context.Context, conn net.Conn, ja3Spec utls.ClientHelloSpec, h2 bool, utlsConfig *utls.Config, serverName string) (utlsConn *utls.UConn, err error) {
-	utlsSpec, err := createSpecWithSpec(ja3Spec, h2, false)
-	if err != nil {
-		return nil, err
+	} else {
+		utlsConfig.NextProtos = []string{"h2", "http/1.1"}
 	}
 	utlsConfig.ServerName = serverName
 	obj.changeSpec(serverName, utlsSpec)
