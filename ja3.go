@@ -183,11 +183,6 @@ func (obj Priority) IsSet() bool {
 	return false
 }
 
-func DefaultSpec() utls.ClientHelloSpec {
-	spec, _ := CreateSpecWithClientHello(utls.HelloChrome_Auto)
-	return spec
-}
-
 var defaultOrderHeadersH2 = []string{
 	":method",
 	":authority",
@@ -233,8 +228,8 @@ func DefaultOrderHeadersWithH2() []string {
 	copy(headers, defaultOrderHeaders)
 	return headers
 }
-func DefaultH2Spec() H2Spec {
-	var h2Spec H2Spec
+func DefaultHSpec() HSpec {
+	var h2Spec HSpec
 	h2Spec.InitialSetting = []Setting{
 		{Id: 1, Val: 65536},
 		{Id: 2, Val: 0},
@@ -252,7 +247,7 @@ func DefaultH2Spec() H2Spec {
 	return h2Spec
 }
 
-type H2Spec struct {
+type HSpec struct {
 	InitialSetting []Setting
 	ConnFlow       uint32   //WINDOW_UPDATE:15663105
 	OrderHeaders   []string //example：[]string{":method",":authority",":scheme",":path"}
@@ -260,14 +255,14 @@ type H2Spec struct {
 }
 
 // have value
-func (obj H2Spec) IsSet() bool {
+func (obj HSpec) IsSet() bool {
 	if obj.InitialSetting != nil || obj.ConnFlow != 0 || obj.OrderHeaders != nil || obj.Priority.IsSet() {
 		return true
 	}
 	return false
 }
 
-func (obj H2Spec) Fp() string {
+func (obj HSpec) Fp() string {
 	settings := []string{}
 	for _, setting := range obj.InitialSetting {
 		settings = append(settings, fmt.Sprintf("%d:%d", setting.Id, setting.Val))
@@ -295,7 +290,7 @@ func (obj H2Spec) Fp() string {
 }
 
 // example："1:65536,2:0,4:6291456,6:262144|15663105|0|m,a,s,p"
-func CreateH2SpecWithStr(h2ja3SpecStr string) (h2ja3Spec H2Spec, err error) {
+func CreateHSpec(h2ja3SpecStr string) (h2ja3Spec HSpec, err error) {
 	tokens := strings.Split(h2ja3SpecStr, "|")
 	if len(tokens) != 4 {
 		err = errors.New("h2 spec format error")
@@ -341,9 +336,14 @@ func CreateH2SpecWithStr(h2ja3SpecStr string) (h2ja3Spec H2Spec, err error) {
 	return
 }
 
-func CreateSpecWithClientHello(clienthello any) (clientHelloSpec utls.ClientHelloSpec, err error) {
+func CreateSpec(clienthello any) (clientHelloSpec utls.ClientHelloSpec, err error) {
 	var clientHelloInfo ClientHello
 	switch value := clienthello.(type) {
+	case bool:
+		if value {
+			return utls.UTLSIdToSpec(utls.HelloChrome_Auto)
+		}
+		return utls.ClientHelloSpec{}, nil
 	case []byte:
 		clientHelloInfo, err = decodeClientHello(value)
 		if err != nil {
