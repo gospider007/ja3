@@ -470,12 +470,6 @@ func (obj *FpContextData) Ja4H(req *http.Request) string {
 				orderHeaders = append(orderHeaders, cook)
 			}
 		}
-	} else if obj.HSpec().OrderHeaders != nil {
-		for _, cook := range obj.HSpec().OrderHeaders {
-			if cook != "Cookie" && cook != "Referer" {
-				orderHeaders = append(orderHeaders, cook)
-			}
-		}
 	}
 	ja4HbStr = tools.Hex(sha256.Sum256([]byte(strings.Join(orderHeaders, ","))))[:12]
 	keys := []string{}
@@ -516,9 +510,6 @@ func (obj *FpContextData) SetConnFlow(data uint32) {
 }
 func (obj *FpContextData) OrderHeaders() []string {
 	return obj.orderHeaders
-}
-func (obj *FpContextData) SetH2OrderHeaders(data []string) {
-	obj.h2Ja3Spec.OrderHeaders = data
 }
 func (obj *FpContextData) SetOrderHeaders(data []string) {
 	obj.orderHeaders = data

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/textproto"
 	"strconv"
 	"strings"
 	"sync"
@@ -163,20 +162,14 @@ func (obj Priority) IsSet() bool {
 	return false
 }
 
-var defaultOrderHeadersH2 = []string{
-	":method",
-	":authority",
-	":scheme",
-	":path",
-}
 var defaultOrderHeaders = []string{
 	":method",
 	":authority",
 	":scheme",
 	":path",
 	"Host",
-	"Connection",
-	"Content-Length",
+	"connection",
+	"content-length",
 	"pragma",
 	"cache-control",
 	"sec-ch-ua",
@@ -186,7 +179,7 @@ var defaultOrderHeaders = []string{
 	"accept",
 	"user-agent",
 	"origin",
-	"Referer",
+	"referer",
 	"sec-fetch-site",
 	"sec-fetch-mode",
 	"sec-fetch-user",
@@ -199,15 +192,11 @@ var defaultOrderHeaders = []string{
 func DefaultOrderHeaders() []string {
 	headers := make([]string, len(defaultOrderHeaders))
 	for i, key := range defaultOrderHeaders {
-		headers[i] = textproto.CanonicalMIMEHeaderKey(key)
+		headers[i] = strings.ToLower(key)
 	}
 	return headers
 }
-func DefaultOrderHeadersWithH2() []string {
-	headers := make([]string, len(defaultOrderHeadersH2))
-	copy(headers, defaultOrderHeaders)
-	return headers
-}
+
 func DefaultHSpec() HSpec {
 	var h2Spec HSpec
 	h2Spec.InitialSetting = []Setting{
@@ -222,21 +211,19 @@ func DefaultHSpec() HSpec {
 		StreamDep: 0,
 		Weight:    255,
 	}
-	h2Spec.OrderHeaders = DefaultOrderHeaders()
 	h2Spec.ConnFlow = 15663105
 	return h2Spec
 }
 
 type HSpec struct {
 	InitialSetting []Setting
-	ConnFlow       uint32   //WINDOW_UPDATE:15663105
-	OrderHeaders   []string //example：[]string{":method",":authority",":scheme",":path"}
+	ConnFlow       uint32 //WINDOW_UPDATE:15663105
 	Priority       Priority
 }
 
 // have value
 func (obj HSpec) IsSet() bool {
-	if obj.InitialSetting != nil || obj.ConnFlow != 0 || obj.OrderHeaders != nil || obj.Priority.IsSet() {
+	if obj.InitialSetting != nil || obj.ConnFlow != 0 || obj.Priority.IsSet() {
 		return true
 	}
 	return false
@@ -247,25 +234,10 @@ func (obj HSpec) Fp() string {
 	for _, setting := range obj.InitialSetting {
 		settings = append(settings, fmt.Sprintf("%d:%d", setting.Id, setting.Val))
 	}
-	heads := []string{}
-	for _, head := range obj.OrderHeaders {
-		head = strings.ToLower(head)
-		switch head {
-		case ":method":
-			heads = append(heads, "m")
-		case ":authority":
-			heads = append(heads, "a")
-		case ":scheme":
-			heads = append(heads, "s")
-		case ":path":
-			heads = append(heads, "p")
-		}
-	}
 	return strings.Join([]string{
 		strings.Join(settings, ","),
 		fmt.Sprint(obj.ConnFlow),
 		"0",
-		strings.Join(heads, ","),
 	}, "|")
 }
 
@@ -300,19 +272,6 @@ func CreateHSpec(h2ja3SpecStr string) (h2ja3Spec HSpec, err error) {
 		return
 	}
 	h2ja3Spec.ConnFlow = uint32(connFlow)
-	h2ja3Spec.OrderHeaders = []string{}
-	for _, hkey := range strings.Split(tokens[3], ",") {
-		switch hkey {
-		case "m":
-			h2ja3Spec.OrderHeaders = append(h2ja3Spec.OrderHeaders, ":method")
-		case "a":
-			h2ja3Spec.OrderHeaders = append(h2ja3Spec.OrderHeaders, ":authority")
-		case "s":
-			h2ja3Spec.OrderHeaders = append(h2ja3Spec.OrderHeaders, ":scheme")
-		case "p":
-			h2ja3Spec.OrderHeaders = append(h2ja3Spec.OrderHeaders, ":path")
-		}
-	}
 	return
 }
 
