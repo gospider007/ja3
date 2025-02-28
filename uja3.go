@@ -7,21 +7,13 @@ import (
 )
 
 type USpec struct {
-	QUICID          uquic.QUICID
-	ClientHelloSpec any //override ClientHelloSpec
+	QUICID uquic.QUICID
 }
 
 func (obj USpec) Spec() (uquic.QUICSpec, error) {
 	spec, err := uquic.QUICID2Spec(obj.QUICID)
 	if err != nil {
 		return uquic.QUICSpec{}, err
-	}
-	if obj.ClientHelloSpec != nil {
-		clientHelloSpec, err := CreateSpec(obj.ClientHelloSpec)
-		if err != nil {
-			return uquic.QUICSpec{}, err
-		}
-		spec.ClientHelloSpec = &clientHelloSpec
 	}
 	return spec, nil
 }

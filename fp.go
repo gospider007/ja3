@@ -1,36 +1,21 @@
 package ja3
 
 import (
-	"context"
 	"crypto/sha256"
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"net/http"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/gospider007/gtls"
-	"github.com/gospider007/re"
 	"github.com/gospider007/tools"
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/crypto/cryptobyte"
 )
 
-type FpContextData struct {
-	clientHelloData []byte
-	h2Ja3Spec       HSpec
-	connectionState tls.ConnectionState
-	orderHeaders    []string
-}
-
-func GetFpContextData(ctx context.Context) (*FpContextData, bool) {
-	data, ok := ctx.Value(keyPrincipalID).(*FpContextData)
-	return data, ok
-}
-
-type ClientHello struct {
+type Spec struct {
+	raw                []byte
 	ContentType        uint8             //contentType
 	MessageVersion     uint16            //MessageVersion
 	HandshakeVersion   uint16            //HandshakeVersion
@@ -204,34 +189,8 @@ func clearGreas(values []uint16) []uint16 {
 	return results
 }
 
-func (obj FpContextData) TlsData() (tlsData TlsData, err error) {
-	clientHello, err := obj.ClientHello()
-	if err != nil {
-		return tlsData, err
-	}
-	tlsData.connectionState = obj.connectionState
-	tlsData.Ciphers = clientHello.CipherSuites
-	tlsData.Curves = clientHello.Curves()
-	tlsData.Extensions = []uint16{}
-	for _, extension := range clientHello.Extensions {
-		tlsData.Extensions = append(tlsData.Extensions, extension.Type)
-	}
-	tlsData.Points = []uint16{}
-	for _, point := range clientHello.Points() {
-		tlsData.Points = append(tlsData.Points, uint16(point))
-	}
-	tlsData.Protocols = clientHello.Protocols()
-	tlsData.Versions = clientHello.Versions()
-	tlsData.Algorithms = clientHello.Algorithms()
-	tlsData.RandomTime = time.Unix(int64(clientHello.RandomTime), 0).String()
-	tlsData.RandomBytes = tools.Hex(clientHello.RandomBytes)
-	tlsData.SessionId = tools.Hex(clientHello.SessionId)
-	tlsData.CompressionMethods = tools.Hex(clientHello.CompressionMethods)
-	return
-}
-
 // type:  11 : utls.SupportedPointsExtension
-func (obj ClientHello) Points() []uint8 {
+func (obj *Spec) Points() []uint8 {
 	for _, ext := range obj.Extensions {
 		if ext.Type == 11 {
 			ex := new(utls.SupportedPointsExtension)
@@ -243,7 +202,7 @@ func (obj ClientHello) Points() []uint8 {
 }
 
 // type:  16 : utls.ALPNExtension
-func (obj ClientHello) Protocols() []string {
+func (obj *Spec) Protocols() []string {
 	for _, ext := range obj.Extensions {
 		if ext.Type == 16 {
 			ex := new(utls.ALPNExtension)
@@ -255,7 +214,7 @@ func (obj ClientHello) Protocols() []string {
 }
 
 // type:  43 : utls.SupportedVersionsExtension
-func (obj ClientHello) Versions() []uint16 {
+func (obj *Spec) Versions() []uint16 {
 	for _, ext := range obj.Extensions {
 		if ext.Type == 43 {
 			ex := new(utls.SupportedVersionsExtension)
@@ -267,7 +226,7 @@ func (obj ClientHello) Versions() []uint16 {
 }
 
 // type:  13 : utls.SignatureAlgorithmsExtension
-func (obj ClientHello) Algorithms() []uint16 {
+func (obj *Spec) Algorithms() []uint16 {
 	for _, ext := range obj.Extensions {
 		if ext.Type == 13 {
 			ex := new(utls.SignatureAlgorithmsExtension)
@@ -283,7 +242,7 @@ func (obj ClientHello) Algorithms() []uint16 {
 }
 
 // type:  10 : utls.SupportedCurvesExtension
-func (obj ClientHello) Curves() []uint16 {
+func (obj *Spec) Curves() []uint16 {
 	for _, ext := range obj.Extensions {
 		if ext.Type == 10 {
 			ex := new(utls.SupportedCurvesExtension)
@@ -298,7 +257,52 @@ func (obj ClientHello) Curves() []uint16 {
 	return nil
 }
 
-func decodeClientHello(clienthello []byte) (clientHelloInfo ClientHello, err error) {
+func (obj *Spec) utlsClientHelloSpec() utls.ClientHelloSpec {
+	var clientHelloSpec utls.ClientHelloSpec
+	clientHelloSpec.CipherSuites = obj.CipherSuites
+	clientHelloSpec.CompressionMethods = obj.CompressionMethods
+	clientHelloSpec.Extensions = make([]utls.TLSExtension, len(obj.Extensions))
+	for i, ext := range obj.Extensions {
+		clientHelloSpec.Extensions[i] = ext.utlsExt()
+	}
+	clientHelloSpec.GetSessionID = sha256.Sum256
+	return clientHelloSpec
+}
+func (obj *Spec) Hex() string {
+	return tools.Hex(obj.raw)
+}
+func (obj *Spec) Map() map[string]any {
+	extensions := make([]map[string]any, len(obj.Extensions))
+	for i, ext := range obj.Extensions {
+		extensions[i] = map[string]any{
+			"type": ext.Type,
+			"data": tools.Hex(ext.Data),
+		}
+	}
+	results := map[string]any{
+		"points":         obj.Points(),
+		"protocols":      obj.Protocols(),
+		"versions":       obj.Versions(),
+		"algorithms":     obj.Algorithms(),
+		"curves":         obj.Curves(),
+		"contentType":    obj.ContentType,
+		"messageVersion": obj.MessageVersion,
+
+		"handshakeVersion":   obj.HandshakeVersion,
+		"handShakeType":      obj.HandShakeType,
+		"randomTime":         obj.RandomTime,
+		"randomBytes":        obj.RandomBytes,
+		"sessionId":          obj.SessionId,
+		"cipherSuites":       obj.CipherSuites,
+		"compressionMethods": obj.CompressionMethods,
+		"extensions":         extensions,
+	}
+	return results
+}
+
+func ParseSpec(clienthello []byte) (clientHelloInfo *Spec, err error) {
+	clientHelloInfo = new(Spec)
+	clientHelloInfo.raw = clienthello
 	plaintext := cryptobyte.String(clienthello)
 	if !plaintext.ReadUint8(&clientHelloInfo.ContentType) {
 		err = errors.New("contentType error")
@@ -432,98 +436,4 @@ func (clientHelloParseData TlsData) Ja4() string {
 	ja4cStr := tools.Hex(sha256.Sum256([]byte(tools.AnyJoin(exts, ",") + "," + tools.AnyJoin(clientHelloParseData.Algorithms, ","))))[:12]
 	ja4 := tools.AnyJoin([]string{ja4aStr, ja4bStr, ja4cStr}, "_")
 	return ja4
-}
-func (obj *FpContextData) Ja4H(req *http.Request) string {
-	ja4HaStr := "ge" + fmt.Sprintf("%d%d", req.ProtoMajor, req.ProtoMinor)
-	headNum := len(req.Header)
-	if req.Header.Get("Cookie") == "" {
-		headNum--
-		ja4HaStr += "n"
-	} else {
-		ja4HaStr += "c"
-	}
-	if req.Header.Get("Referer") == "" {
-		headNum--
-		ja4HaStr += "n"
-	} else {
-		ja4HaStr += "r"
-	}
-	headNumStr := fmt.Sprintf("%d", headNum)
-	if len(headNumStr) < 2 {
-		headNumStr = "0" + headNumStr
-	}
-	ja4HaStr += headNumStr
-	lang := strings.ToLower(re.Sub(`[\s-,;\.=]`, "", req.Header.Get("Accept-Language")))
-	if len(lang) < 4 {
-		ja4HaStr += lang
-		for i := 0; i < 4-len(lang); i++ {
-			ja4HaStr += "0"
-		}
-	} else {
-		ja4HaStr += lang[:4]
-	}
-	var ja4HbStr string
-	orderHeaders := []string{}
-	if obj.orderHeaders != nil {
-		for _, cook := range obj.orderHeaders {
-			if cook != "Cookie" && cook != "Referer" {
-				orderHeaders = append(orderHeaders, cook)
-			}
-		}
-	}
-	ja4HbStr = tools.Hex(sha256.Sum256([]byte(strings.Join(orderHeaders, ","))))[:12]
-	keys := []string{}
-	vals := []string{}
-	for _, cookie := range req.Cookies() {
-		keys = append(keys, cookie.Name)
-		vals = append(vals, fmt.Sprintf("%s=%s", cookie.Name, cookie.Value))
-	}
-	sort.Strings(keys)
-	sort.Strings(vals)
-	ja4HcStr := tools.Hex(sha256.Sum256([]byte(strings.Join(keys, ","))))[:12]
-	ja4HdStr := tools.Hex(sha256.Sum256([]byte(strings.Join(vals, ","))))[:12]
-	ja4H := tools.AnyJoin([]string{ja4HaStr, ja4HbStr, ja4HcStr, ja4HdStr}, "_")
-	return ja4H
-}
-func (obj *FpContextData) ConnectionState() tls.ConnectionState {
-	return obj.connectionState
-}
-func (obj *FpContextData) SetConnectionState(val tls.ConnectionState) {
-	obj.connectionState = val
-}
-
-func (obj *FpContextData) ClientHello() (ClientHello, error) {
-	return decodeClientHello(obj.clientHelloData)
-}
-func (obj *FpContextData) HSpec() HSpec {
-	return obj.h2Ja3Spec
-}
-
-func (obj *FpContextData) SetClientHelloData(data []byte) {
-	obj.clientHelloData = data
-}
-func (obj *FpContextData) SetInitialSetting(data []Setting) {
-	obj.h2Ja3Spec.InitialSetting = data
-}
-func (obj *FpContextData) SetConnFlow(data uint32) {
-	obj.h2Ja3Spec.ConnFlow = data
-}
-func (obj *FpContextData) OrderHeaders() []string {
-	return obj.orderHeaders
-}
-func (obj *FpContextData) SetOrderHeaders(data []string) {
-	obj.orderHeaders = data
-}
-func (obj *FpContextData) SetPriority(data Priority) {
-	obj.h2Ja3Spec.Priority = data
-}
-
-type keyPrincipal string
-
-const keyPrincipalID keyPrincipal = "FpContextData"
-
-func CreateContext(ctx context.Context) (ja3Ctx context.Context, ja3Context *FpContextData) {
-	ja3Context = &FpContextData{}
-	ja3Ctx = context.WithValue(ctx, keyPrincipalID, ja3Context)
-	return
 }
