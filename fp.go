@@ -175,8 +175,11 @@ func (obj *Spec) utlsClientHelloSpec() utls.ClientHelloSpec {
 	clientHelloSpec.GetSessionID = sha256.Sum256
 	return clientHelloSpec
 }
+func (obj *Spec) Bytes() []byte {
+	return obj.raw
+}
 func (obj *Spec) Hex() string {
-	return tools.Hex(obj.raw)
+	return tools.Hex(obj.Bytes())
 }
 func (obj *Spec) Map() map[string]any {
 	extensions := make([]map[string]any, len(obj.Extensions))
