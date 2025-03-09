@@ -9,10 +9,9 @@ require (
 	github.com/gospider007/re v0.0.0-20250217075352-bcb79f285d6c
 	github.com/gospider007/tools v0.0.0-20250301080306-db6e5ca6f81b
 	github.com/refraction-networking/uquic v0.0.6
-	github.com/refraction-networking/utls v1.6.7
+	github.com/refraction-networking/utls v1.6.6
 	golang.org/x/crypto v0.35.0
 )
-
 require (
 	github.com/STARRY-S/zip v0.2.1 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect

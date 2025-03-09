@@ -2,6 +2,8 @@ package ja3
 
 import (
 	"context"
+	"io"
+	"log"
 	"net"
 	"strconv"
 	"sync"
@@ -9,6 +11,7 @@ import (
 	"github.com/gospider007/kinds"
 	"github.com/gospider007/re"
 	utls "github.com/refraction-networking/utls"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 type specErr struct {
@@ -114,4 +117,19 @@ func (obj *Client) Client(ctx context.Context, conn net.Conn, spec *Spec, utlsCo
 	}
 	err = utlsConn.HandshakeContext(ctx)
 	return utlsConn, err
+}
+func getUtlsExtentionsData(id utls.ClientHelloID) map[uint16]utls.TLSExtension {
+	spec, _ := utls.UTLSIdToSpec(id)
+	spec2, _ := utls.UTLSIdToSpec(id)
+	results := map[uint16]utls.TLSExtension{}
+	for i, ext := range spec2.Extensions {
+		content, _ := io.ReadAll(ext)
+		extensionsData := cryptobyte.String(content)
+		var extension uint16
+		if extensionsData.ReadUint16(&extension) {
+			results[extension] = spec.Extensions[i]
+			log.Print(i, "  ----  ", extension)
+		}
+	}
+	return results
 }

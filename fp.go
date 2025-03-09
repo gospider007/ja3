@@ -3,6 +3,7 @@ package ja3
 import (
 	"crypto/sha256"
 	"errors"
+	"log"
 
 	"github.com/gospider007/tools"
 	utls "github.com/refraction-networking/utls"
@@ -57,6 +58,10 @@ func createExtension(extensionId uint16, data []byte) utls.TLSExtension {
 	case 65037:
 		return utls.BoringGREASEECH()
 	default:
+		// if extensionId == 17613 {
+		// 	return &utls.SNIExtension{}
+		// 	// return nil
+		// }
 		ext := utls.ExtensionFromID(extensionId)
 		if ext == nil {
 			return &utls.GenericExtension{
@@ -168,9 +173,11 @@ func (obj *Spec) utlsClientHelloSpec() utls.ClientHelloSpec {
 	var clientHelloSpec utls.ClientHelloSpec
 	clientHelloSpec.CipherSuites = obj.CipherSuites
 	clientHelloSpec.CompressionMethods = obj.CompressionMethods
-	clientHelloSpec.Extensions = make([]utls.TLSExtension, len(obj.Extensions))
-	for i, ext := range obj.Extensions {
-		clientHelloSpec.Extensions[i] = ext.utlsExt()
+	clientHelloSpec.Extensions = []utls.TLSExtension{}
+	for _, ext := range obj.Extensions {
+		if utlsExt := ext.utlsExt(); utlsExt != nil {
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, utlsExt)
+		}
 	}
 	clientHelloSpec.GetSessionID = sha256.Sum256
 	return clientHelloSpec
@@ -280,12 +287,16 @@ func ParseSpec(clienthello []byte) (clientHelloInfo *Spec, err error) {
 	for !extensionsData.Empty() {
 		var extension uint16
 		var extData cryptobyte.String
-		if extensionsData.ReadUint16(&extension) && extensionsData.ReadUint16LengthPrefixed(&extData) {
+		extOk := extensionsData.ReadUint16(&extension)
+		if extOk && extensionsData.ReadUint16LengthPrefixed(&extData) {
 			clientHelloInfo.Extensions = append(clientHelloInfo.Extensions, Extension{
 				Type: extension,
 				Data: extData,
 			})
+		} else {
+			log.Print("extension error")
 		}
 	}
+
 	return
 }
