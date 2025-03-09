@@ -3,7 +3,6 @@ package ja3
 import (
 	"crypto/sha256"
 	"errors"
-	"log"
 
 	"github.com/gospider007/tools"
 	utls "github.com/refraction-networking/utls"
@@ -286,8 +285,6 @@ func ParseSpec(clienthello []byte) (clientHelloInfo *Spec, err error) {
 				Type: extension,
 				Data: extData,
 			})
-		} else {
-			log.Print("extension error")
 		}
 	}
 
