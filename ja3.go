@@ -93,8 +93,6 @@ func (obj *Client) Client(ctx context.Context, conn net.Conn, spec *Spec, utlsCo
 				break
 			}
 		}
-	} else {
-		utlsConfig.NextProtos = []string{"h2", "http/1.1"}
 	}
 	utlsConfig.ServerName = serverName
 	obj.changeSpec(serverName, utlsSpec)
