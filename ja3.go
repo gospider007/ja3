@@ -94,6 +94,7 @@ func (obj *Client) Client(ctx context.Context, conn net.Conn, spec *Spec, utlsCo
 			}
 		}
 	}
+	// utlsSpec.Extensions = utls.ShuffleChromeTLSExtensions(utlsSpec.Extensions)
 	utlsConfig.ServerName = serverName
 	obj.changeSpec(serverName, utlsSpec)
 	utlsConn = utls.UClient(conn, utlsConfig, utls.HelloCustom)

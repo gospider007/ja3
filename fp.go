@@ -159,9 +159,9 @@ func (obj *Spec) ServerName() string {
 }
 func (obj *Spec) utlsClientHelloSpec() utls.ClientHelloSpec {
 	// fingerprinter := &utls.Fingerprinter{
-	// 	AllowBluntMimicry: true,
-	// 	RealPSKResumption: true,
-	// 	AlwaysAddPadding:  true,
+	// 	// AllowBluntMimicry: true,
+	// 	// RealPSKResumption: true,
+	// 	// AlwaysAddPadding:  true,
 	// }
 	// generatedSpec, _ := fingerprinter.FingerprintClientHello(obj.raw)
 	// return *generatedSpec
