@@ -159,12 +159,14 @@ func (obj *Spec) ServerName() string {
 }
 func (obj *Spec) utlsClientHelloSpec() utls.ClientHelloSpec {
 	// fingerprinter := &utls.Fingerprinter{
-	// 	// AllowBluntMimicry: true,
-	// 	// RealPSKResumption: true,
-	// 	// AlwaysAddPadding:  true,
+	// 	AllowBluntMimicry: true,
+	// 	RealPSKResumption: true,
+	// 	AlwaysAddPadding:  true,
 	// }
 	// generatedSpec, _ := fingerprinter.FingerprintClientHello(obj.raw)
 	// return *generatedSpec
+	// spec, _ := utls.UTLSIdToSpec(utls.HelloChrome_131)
+	// return spec
 	var clientHelloSpec utls.ClientHelloSpec
 	clientHelloSpec.CipherSuites = obj.CipherSuites
 	clientHelloSpec.CompressionMethods = obj.CompressionMethods
