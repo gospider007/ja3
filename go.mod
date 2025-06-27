@@ -9,7 +9,7 @@ require (
 	github.com/gospider007/re v0.0.0-20250217075352-bcb79f285d6c
 	github.com/gospider007/tools v0.0.0-20250623092633-4c8b251d2f4a
 	github.com/refraction-networking/uquic v0.0.6
-	github.com/refraction-networking/utls v1.7.3
+	github.com/refraction-networking/utls v1.7.4-0.20250621163342-5abccec539e6
 	golang.org/x/crypto v0.39.0
 )
 
@@ -29,14 +29,14 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
-	github.com/mholt/archives v0.1.2 // indirect
+	github.com/mholt/archives v0.1.3 // indirect
+	github.com/mikelolasagasti/xz v1.0.1 // indirect
 	github.com/minio/minlz v1.0.1 // indirect
 	github.com/nwaples/rardecode/v2 v2.1.1 // indirect
 	github.com/onsi/ginkgo/v2 v2.23.4 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/sorairolake/lzip-go v0.3.7 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
-	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/mock v0.5.2 // indirect
