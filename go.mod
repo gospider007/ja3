@@ -5,13 +5,13 @@ go 1.25
 // replace github.com/refraction-networking/utls => ./utls
 
 require (
-	github.com/gospider007/http2 v0.0.0-20251011074750-9f56e348ffb9
 	github.com/gospider007/kinds v0.0.0-20250815031133-b2282666f69c
 	github.com/gospider007/re v0.0.0-20250815031101-a57caeff73bf
 	github.com/gospider007/tools v0.0.0-20251010080832-0e5c6b21df2d
 	github.com/refraction-networking/uquic v0.0.6
 	github.com/refraction-networking/utls v1.8.1
 	golang.org/x/crypto v0.43.0
+	golang.org/x/net v0.46.0
 )
 
 require (
@@ -24,7 +24,6 @@ require (
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20251007162407-5df77e3f7d1d // indirect
-	github.com/gospider007/http1 v0.0.0-20251011074703-a8d2e5a53aa0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/minio/minlz v1.0.1 // indirect
 	github.com/onsi/ginkgo/v2 v2.26.0 // indirect
@@ -37,7 +36,6 @@ require (
 	golang.org/x/exp v0.0.0-20251009144603-d2f985daa21b // indirect
 	golang.org/x/image v0.32.0 // indirect
 	golang.org/x/mod v0.29.0 // indirect
-	golang.org/x/net v0.46.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/text v0.30.0 // indirect

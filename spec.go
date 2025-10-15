@@ -6,7 +6,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/gospider007/http2"
 	"github.com/gospider007/tools"
 )
 
@@ -32,7 +31,7 @@ type H1Spec struct {
 	raw          []byte
 }
 
-func ParseSpec(raw []byte) (*H1Spec, error) {
+func ParseH1Spec(raw []byte) (*H1Spec, error) {
 	i := bytes.Index(raw, []byte("\r\n\r\n"))
 	if i == -1 {
 		return nil, errors.New("not found \\r\\n")
@@ -61,7 +60,7 @@ func ParseSpec(raw []byte) (*H1Spec, error) {
 type GospiderSpec struct {
 	TLSSpec *TlsSpec
 	H1Spec  *H1Spec
-	H2Spec  *http2.Spec
+	H2Spec  *H2Spec
 }
 
 func ParseGospiderSpec(value string) (*GospiderSpec, error) {
@@ -84,7 +83,7 @@ func ParseGospiderSpec(value string) (*GospiderSpec, error) {
 		if err != nil {
 			return nil, err
 		}
-		if spec.H1Spec, err = ParseSpec(b); err != nil {
+		if spec.H1Spec, err = ParseH1Spec(b); err != nil {
 			return nil, err
 		}
 	}
@@ -93,7 +92,7 @@ func ParseGospiderSpec(value string) (*GospiderSpec, error) {
 		if err != nil {
 			return nil, err
 		}
-		if spec.H2Spec, err = http2.ParseSpec(b); err != nil {
+		if spec.H2Spec, err = ParseH2Spec(b); err != nil {
 			return nil, err
 		}
 	}
