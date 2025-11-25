@@ -63,6 +63,19 @@ type GospiderSpec struct {
 	H2Spec  *H2Spec
 }
 
+func (obj *GospiderSpec) Clone() *GospiderSpec {
+	spec := new(GospiderSpec)
+	if obj.TLSSpec != nil {
+		spec.TLSSpec, _ = ParseTlsSpec(obj.TLSSpec.raw)
+	}
+	if obj.H1Spec != nil {
+		spec.H1Spec, _ = ParseH1Spec(obj.H1Spec.raw)
+	}
+	if obj.H2Spec != nil {
+		spec.H2Spec, _ = ParseH2Spec(obj.H2Spec.raw)
+	}
+	return spec
+}
 func ParseGospiderSpec(value string) (*GospiderSpec, error) {
 	specs := strings.Split(value, "@")
 	spec := new(GospiderSpec)
