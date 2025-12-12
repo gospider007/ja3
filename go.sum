@@ -30,8 +30,8 @@ github.com/google/pprof v0.0.0-20251208000136-3d256cb9ff16 h1:ptucaU8cwiAc+/jqDb
 github.com/google/pprof v0.0.0-20251208000136-3d256cb9ff16/go.mod h1:67FPmZWbr+KDT/VlpWtw6sO9XSjpJmLuHpoLmWiTGgY=
 github.com/gospider007/kinds v0.0.0-20250815031133-b2282666f69c h1:WnFZf0v+Du5nH/R3pq5QwkTcfVxLqVMRp2dPaI6w6YY=
 github.com/gospider007/kinds v0.0.0-20250815031133-b2282666f69c/go.mod h1:8eAmhxyW7p81nsYlD5Wj8I0HuZpVGci+Q9wr6vfY8pg=
-github.com/gospider007/re v0.0.0-20250815031101-a57caeff73bf h1:+3g9qmg+XLbYcY4vvbsDM7xHkXF+5U8V/haAYDImGTA=
-github.com/gospider007/re v0.0.0-20250815031101-a57caeff73bf/go.mod h1:5fVj9OYkqlOgBdz+kH4jgdiSZ6jdfbmexLIFqtMa9v8=
+github.com/gospider007/re v0.0.0-20251212071142-f56bce921150 h1:xkr9UHkqO5c+VmmsoSzBTjufvqQxMSMk9c1aN49zfN8=
+github.com/gospider007/re v0.0.0-20251212071142-f56bce921150/go.mod h1:5fVj9OYkqlOgBdz+kH4jgdiSZ6jdfbmexLIFqtMa9v8=
 github.com/gospider007/tools v0.0.0-20251209055936-a37812a2b732 h1:rvcck7t7rtTrXGdtTWL3b4pYuYU1VkKYK1BvPlchbGg=
 github.com/gospider007/tools v0.0.0-20251209055936-a37812a2b732/go.mod h1:YKtuOKrsnp8/7tWBcQSUysl3jfJ1pSlNjxmizzogMKw=
 github.com/joshdk/go-junit v1.0.0 h1:S86cUKIdwBHWwA6xCmFlf3RTLfVXYQfvanM5Uh+K6GE=
