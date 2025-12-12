@@ -7,7 +7,7 @@ go 1.25
 require (
 	github.com/gospider007/kinds v0.0.0-20250815031133-b2282666f69c
 	github.com/gospider007/re v0.0.0-20251212071142-f56bce921150
-	github.com/gospider007/tools v0.0.0-20251209055936-a37812a2b732
+	github.com/gospider007/tools v0.0.0-20251212071315-d05548ab517e
 	github.com/mileusna/useragent v1.3.5
 	github.com/refraction-networking/uquic v0.0.6
 	github.com/refraction-networking/utls v1.8.1
