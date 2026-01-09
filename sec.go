@@ -65,6 +65,7 @@ func inferFetchDest(req *http.Request) string {
 	case ".mp3", ".wav", ".aac":
 		return "audio"
 	}
+	// 默认 fallback
 	return "empty"
 }
 

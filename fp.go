@@ -383,6 +383,9 @@ func AutoAddHeaders(req *http.Request) {
 	if req.Header.Get("accept-encoding") == "" {
 		req.Header.Set("accept-encoding", "gzip, deflate, br, zstd")
 	}
+	if req.Header.Get("priority") == "" {
+		req.Header.Set("priority", "u=1, i")
+	}
 	if req.Header.Get("accept") == "" {
 		req.Header.Set("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/json,text/plain;q=0.8,image/avif,image/webp,image/apng,image/svg+xml,image/*;q=0.8,video/mp4,video/webm,video/ogg,audio/mpeg,audio/ogg,audio/wav,font/woff2,font/woff,font/ttf,font/otf,application/font-woff,application/font-woff2,application/octet-stream,*/*;q=0.5")
 	}
