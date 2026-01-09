@@ -66,24 +66,6 @@ func inferFetchDest(req *http.Request) string {
 	case ".mp3", ".wav", ".aac":
 		return "audio"
 	}
-
-	// 如果后缀无法判断，使用 Accept 判断
-	switch {
-	case strings.Contains(accept, "text/html"):
-		return "document"
-	case strings.Contains(accept, "text/css"):
-		return "style"
-	case strings.Contains(accept, "javascript"):
-		return "script"
-	case strings.Contains(accept, "image/"):
-		return "image"
-	case strings.Contains(accept, "font/") || strings.Contains(accept, "application/font"):
-		return "font"
-	case strings.Contains(accept, "video/"):
-		return "video"
-	case strings.Contains(accept, "audio/"):
-		return "audio"
-	}
 	// 默认 fallback
 	return "empty"
 }
