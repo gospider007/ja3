@@ -45,7 +45,6 @@ func defaultPort(scheme string) string {
 
 // inferFetchDest 根据请求的 Accept 和 URL 后缀推断 sec-fetch-dest
 func inferFetchDest(req *http.Request) string {
-	accept := req.Header.Get("Accept")
 	urlPath := req.URL.Path
 	ext := strings.ToLower(path.Ext(urlPath)) // 获取后缀，例如 .js, .css, .png
 
@@ -66,7 +65,6 @@ func inferFetchDest(req *http.Request) string {
 	case ".mp3", ".wav", ".aac":
 		return "audio"
 	}
-	// 默认 fallback
 	return "empty"
 }
 
