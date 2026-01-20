@@ -10,7 +10,7 @@ require (
 	github.com/gospider007/tools v0.0.0-20260113083648-187b0026d83c
 	github.com/mileusna/useragent v1.3.5
 	github.com/refraction-networking/uquic v0.0.6
-	github.com/refraction-networking/utls v1.8.1
+	github.com/refraction-networking/utls v1.8.2
 	golang.org/x/crypto v0.47.0
 	golang.org/x/net v0.49.0
 )
@@ -24,8 +24,8 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
-	github.com/google/pprof v0.0.0-20260111202518-71be6bfdd440 // indirect
-	github.com/klauspost/compress v1.18.2 // indirect
+	github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83 // indirect
+	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/minio/minlz v1.0.1 // indirect
 	github.com/onsi/ginkgo/v2 v2.27.5 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
