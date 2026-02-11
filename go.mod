@@ -1,6 +1,6 @@
 module github.com/gospider007/ja3
 
-go 1.25
+go 1.26.0
 
 // replace github.com/refraction-networking/utls => ./utls
 
