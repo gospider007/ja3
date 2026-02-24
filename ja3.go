@@ -8,6 +8,7 @@ import (
 
 	"github.com/gospider007/kinds"
 	"github.com/gospider007/re"
+	"github.com/gospider007/tools"
 	utls "github.com/refraction-networking/utls"
 )
 
@@ -105,12 +106,15 @@ func (obj *Client) Client(ctx context.Context, conn net.Conn, spec *TlsSpec, utl
 			break
 		}
 		if !obj.setSpecErrWithError(serverName, err) {
-			return nil, err
+			return nil, tools.WrapError(err, "setSpecErrWithError")
 		}
 		if !obj.changeSpec(serverName, utlsSpec) {
-			return nil, err
+			return nil, tools.WrapError(err, "changeSpec")
 		}
 	}
 	err = utlsConn.HandshakeContext(ctx)
+	if err != nil {
+		return nil, tools.WrapError(err, "HandshakeContext")
+	}
 	return utlsConn, err
 }
